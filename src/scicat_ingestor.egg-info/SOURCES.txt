@@ -1,0 +1,10 @@
+pyproject.toml
+setup.py
+src/datablock.py
+src/dataset.py
+src/ingestor.py
+src/scicat_ingestor.egg-info/PKG-INFO
+src/scicat_ingestor.egg-info/SOURCES.txt
+src/scicat_ingestor.egg-info/dependency_links.txt
+src/scicat_ingestor.egg-info/requires.txt
+src/scicat_ingestor.egg-info/top_level.txt

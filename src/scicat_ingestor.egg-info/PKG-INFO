@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: scicat-ingestor
+Version: 0.1.dev1+g26c276d
+Summary: scicat ingestor service
+Author-email: Bjoern Pedersen <bjoern.pedersen@frm2.tum.de>
+Requires-Python: >=3.7
+Requires-Dist: requests
+Requires-Dist: dateutils
