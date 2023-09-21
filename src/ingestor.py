@@ -68,7 +68,10 @@ class Ingestor:
 
 def run():
     i = Ingestor(os.environ.get('SCICAT_URL'))
-    i.login(os.environ.get('SCICAT_USER'),os.environ.get('SCICAT_PASSWORD'))
+    if os.environ.get('SCICAT_TOKEN'):
+        i.token = os.environ.get('SCICAT_TOKEN')
+    else:
+        i.login(os.environ.get('SCICAT_USER'),os.environ.get('SCICAT_PASSWORD'))
     i.createDataset()
     i.addDataBlock(['file1.xxx','file2.yyy'])
 
