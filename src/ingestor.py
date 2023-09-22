@@ -23,7 +23,7 @@ class Ingestor:
         np3y = now + relativedelta(years=3)
 
         d = dataset.Dataset()
-          
+
         d.fields.datasetName ="Testdataset"
         d.fields.creationLocation ='MLZ'
         d.fields.owner="63e24d771353236f66a61d31"
@@ -39,8 +39,11 @@ class Ingestor:
         d.fields.datasetlifecycle.dateOfDiskPurging = np3y.isoformat()
         d.fields.datasetlifecycle.archiveRetentionTime = np3y.isoformat()
         d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
+        d.fields.datasetlifecycle.publishedOn = np3y.isoformat()
         d.fields.isPublished=False
-        d.fields.scientificMetadata= {"info": {"value": "test","unit": ""}}
+        d.fields.scientificMetadata= {
+            "info": {"value": "test","unit": ""},
+             "temperature": {"value": 27.45, "unit": "kelvin"}}
 
         j = d._toJson()
 
@@ -63,7 +66,7 @@ class Ingestor:
 
        upid = requests.utils.quote(self.pid, safe='')
        r = requests.post( f'{self.url}api/v3/Datasets/{upid}/origdatablocks/', json=j, headers= {"Authorization": f"Bearer {self.token}"})
-       print(r.text) 
+       print(r.text)
 
 
 def run():

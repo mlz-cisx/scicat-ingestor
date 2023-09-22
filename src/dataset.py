@@ -5,12 +5,14 @@ from dataclasses import dataclass, field, asdict
 @dataclass
 class Lifecycle:
     archivable: bool = True
-    retrievable: bool = True
+    retrievable: bool = False
     publishable: bool = True
-    dateOfDiskPurging: str= ""
-    archiveRetentionTime: str= ""
-    dateOfPublishing: str= ""
+    dateOfDiskPurging: str = ""
+    archiveRetentionTime: str = ""
+    dateOfPublishing: str = ""
+    publishedOn: str = ""
     isOnCentralDisk: bool = True
+    archiveStatusMessage: str = "datasetCreated"
 
 
 
