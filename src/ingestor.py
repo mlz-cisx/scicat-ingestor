@@ -26,7 +26,7 @@ class Ingestor:
           
         d.fields.datasetName ="Testdataset"
         d.fields.creationLocation ='MLZ'
-        d.fields.owner="pedersen"
+        d.fields.owner="63e24d771353236f66a61d31"
         d.fields.principalInvestigator="Björn Pedersen"
         d.fields.contactEmail="bjoern.pedersen@frm2.tum.de"
         d.fields.ownerEmail="bjoern.pedersen@frm2.tum.de"
@@ -34,13 +34,13 @@ class Ingestor:
         d.fields.creationTime=now.isoformat()
         d.fields.endTime=now.isoformat()
         d.fields.type="raw"
-        d.fields.ownerGroup="resi"
+        d.fields.ownerGroup="orgasoft"
         d.fields.accessGroups=["mlz","resi"]
         d.fields.datasetlifecycle.dateOfDiskPurging = np3y.isoformat()
         d.fields.datasetlifecycle.archiveRetentionTime = np3y.isoformat()
         d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
         d.fields.isPublished=False
-        d.fields.scientificMetadata= {}
+        d.fields.scientificMetadata= {"info": {"value": "test","unit": ""}}
 
         j = d._toJson()
 
