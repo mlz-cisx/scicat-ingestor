@@ -23,6 +23,10 @@ dynamic = [
   "version",
 ]
 
+[project.scripts]
+ingestor = "ingestor:run"
+
+
 [tool.setuptools_scm]
 write_to = "src/version.py"
 
