@@ -16,7 +16,7 @@ Usage
 Using scicat token (you can get from your profile), currently required for oidc-only instances:
 
 ```
-export SCICAT_URL= <your scicat url> (should end with `/`)
+export SCICAT_URL= <your scicat url (should end with `/`)>
 export SCICAT_TOKEN=<your token>
 
 ingestor
@@ -26,8 +26,9 @@ ingestor
 Using functional accounts:
 
 ```
-export SCICAT_USER=< your username>
-export SCICAT_PASSWORD=<your-pw>
+export SCICAT_URL= <your scicat url (should end with `/`)>
+export SCICAT_USER=<your username>
+export SCICAT_PASSWORD=<your pw>
 ingestor
 ```
 
