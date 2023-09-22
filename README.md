@@ -1,19 +1,35 @@
 Simple scicat ingestor
-==================
+======================
 
-Installation:
+Installation
+------------
+
+development (assumes you have suitable venv[1]):
+```
 pip install -e .
+```
+
+Usage
+-----
 
 
-Usage:
+Using scicat token (you can get from your profile), currently required for oidc-only instances:
+
+```
 export SCICAT_URL= <your scicat url> (should end with `/`)
-
-1) user/pw
-export SCICAT_USER=< your username>
-export SCICAT_PASSWORD=<your-pw>
-
-2) scicat token
 export SCICAT_TOKEN=<your token>
 
-python src/ingestor.py
+ingestor
+```
 
+
+Using functional accounts:
+
+```
+export SCICAT_USER=< your username>
+export SCICAT_PASSWORD=<your-pw>
+ingestor
+```
+
+[1] venv creation can be done using pyenv with pyenv-virtualenv plugin.
+ https://github.com/pyenv/pyenv-virtualenv
