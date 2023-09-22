@@ -1,2 +1,4 @@
 src/version.py
 __pycache__/
+*.egg-info
+
