@@ -32,5 +32,19 @@ export SCICAT_PASSWORD=<your pw>
 ingestor
 ```
 
+
+Access requirements
+==================
+
+ - the user must be a member of a group in the configured`CREATE_DATASET_GROUPS`
+
+ and
+
+ - the owner group must be a group the ingestor is a member of
+
+ or
+ -  the user is a member of an admin group
+
+
 [1] venv creation can be done using pyenv with pyenv-virtualenv plugin.
  https://github.com/pyenv/pyenv-virtualenv
