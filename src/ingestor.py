@@ -6,7 +6,6 @@ import requests
 
 from  datetime import datetime
 from dateutil.relativedelta import relativedelta
-DEF_URL = "https://scicat-dev.k8s-test.frm2.tum.de/"
 
 class Ingestor:
 
