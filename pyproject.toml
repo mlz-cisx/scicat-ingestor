@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-  "setuptools>=55",
-  "setuptools_scm[toml]>=6.2","wheel"
+    "setuptools>=55",
+    "setuptools_scm[toml]>=6.2", "wheel"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -12,15 +12,15 @@ description = "scicat ingestor service"
 #readme = "README.rst"
 #license.file = "LICENSE"
 authors = [
-    {name="Bjoern Pedersen", email="bjoern.pedersen@frm2.tum.de"}
+    { name = "Bjoern Pedersen", email = "bjoern.pedersen@frm2.tum.de" }
 ]
 requires-python = ">=3.7"
 dependencies = [
-   "requests",
-   "dateutils",
-  ]
+    "requests",
+    "dateutils",
+]
 dynamic = [
-  "version",
+    "version",
 ]
 
 [project.scripts]
@@ -195,7 +195,7 @@ function-naming-style = "snake_case"
 # function-rgx =
 
 # Good variable names which should always be accepted, separated by a comma.
-good-names = ["i", "j", "k","e", "ex", "Run", "_"]
+good-names = ["i", "j", "k", "e", "ex", "Run", "_"]
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
