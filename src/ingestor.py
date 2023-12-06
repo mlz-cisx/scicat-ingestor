@@ -126,7 +126,7 @@ class Ingestor:
     ):
         msg = json.loads(format(msg_raw))
         self.log.debug(pprint.pformat(msg))
-        if self.pid != msg['id'] and msg['type'] == 'scan.end':
+        if self.pid != msg.get('id', None) and msg.get('type') == 'scan.end':
             self.createDataset(msg)
             fp = msg.get('filepaths')
             if fp:
