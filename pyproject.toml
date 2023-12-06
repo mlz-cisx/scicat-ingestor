@@ -16,9 +16,10 @@ authors = [
 ]
 requires-python = ">=3.7"
 dependencies = [
-    "requests",
-    "dateutils",
-]
+   "requests",
+   "dateutils",
+   "rstream",
+  ]
 dynamic = [
     "version",
 ]

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
+
 
 @dataclass
 class Lifecycle:
@@ -15,11 +16,10 @@ class Lifecycle:
     archiveStatusMessage: str = "datasetCreated"
 
 
-
 @dataclass(init=True)
 class DatasetFields:
-    datasetName: str =""
-    principalInvestigator: str= ""
+    datasetName: str = ""
+    principalInvestigator: str = ""
     endTime: str = ""
     creationLocation: str = ""
     dataFormat: str = ""
@@ -36,15 +36,15 @@ class DatasetFields:
     keywords: list = field(default_factory=list)
     description: str = ""
     datasetName: str = ""
-    classification:str = "AV=medium,CO=low"
-    license:str = "CC-BY-4.0"
+    classification: str = "AV=medium,CO=low"
+    license: str = "CC-BY-4.0"
     version: str = ""
     isPublished: bool = False,
-    ownerGroup:str = "mlz"
-    accessGroups:list = field(default_factory=list)
+    ownerGroup: str = "mlz"
+    accessGroups: list = field(default_factory=list)
     proposalId: str = ""
     sampleId: str = "ad2YBhhyw"
-    datasetlifecycle: Lifecycle = field(default_factory = Lifecycle)
+    datasetlifecycle: Lifecycle = field(default_factory=Lifecycle)
 
 
 class Dataset:
