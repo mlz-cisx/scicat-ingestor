@@ -7,16 +7,18 @@ import pprint
 import signal
 from collections import defaultdict
 from datetime import datetime
+from dataclasses import asdict
 
 import requests
 from dateutil.relativedelta import relativedelta
+
+from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
+    MessageContext, OffsetType, amqp_decoder
 
 import datablock
 import dataset
 
 logging.basicConfig(level=logging.DEBUG)
-from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
-    MessageContext, OffsetType, amqp_decoder
 
 STREAM = "xresd"
 
@@ -86,15 +88,15 @@ class Ingestor:
 
     def addDataBlock(self, flist):
         self.log.info(flist)
-        b = datablock.origdatablock()
+        b = datablock.OrigDatablock()
         for f in flist:
-            fi = datablock.datafile(f, datetime.now().isoformat())
+            fi = datablock.Datafile(f, datetime.now().isoformat())
             fi.size = 200
 
             b.dataFileList.append(fi)
 
         b.size = len(b.dataFileList)
-        j = datablock.asdict(b)
+        j = asdict(b)
         self.log.debug(j)
 
         upid = requests.utils.quote(self.pid, safe='')
