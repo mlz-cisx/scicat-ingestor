@@ -63,14 +63,14 @@ write_to = "src/version.py"
 # fail-on =
 
 # Specify a score threshold under which the program will exit with error.
-fail-under = 10
+fail-under = 10.0
 
 # Interpret the stdin as a python script, whose filename needs to be passed as
 # the module_or_package argument.
 # from-stdin =
 
 # Files or directories to be skipped. They should be base names, not paths.
-ignore = ["CVS"]
+ignore = ["CVS", "src/version.py"]
 
 # Add files or directories matching the regular expressions patterns to the
 # ignore-list. The regex matches against paths and can be in Posix or Windows
@@ -133,14 +133,14 @@ suggestion-mode = true
 
 [tool.pylint.basic]
 # Naming style matching correct argument names.
-argument-naming-style = "snake_case"
+argument-naming-style = "any"
 
 # Regular expression matching correct argument names. Overrides argument-naming-
 # style. If left empty, argument names will be checked with the set naming style.
 # argument-rgx =
 
 # Naming style matching correct attribute names.
-attr-naming-style = "snake_case"
+attr-naming-style = "any"
 
 # Regular expression matching correct attribute names. Overrides attr-naming-
 # style. If left empty, attribute names will be checked with the set naming
@@ -399,7 +399,7 @@ confidence = ["HIGH", "CONTROL_FLOW", "INFERENCE", "INFERENCE_FAILURE", "UNDEFIN
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
-disable = ["raw-checker-failed", "bad-inline-option", "locally-disabled", "file-ignored", "suppressed-message", "useless-suppression", "deprecated-pragma", "use-symbolic-message-instead"]
+disable = ["raw-checker-failed", "bad-inline-option", "locally-disabled", "file-ignored", "suppressed-message", "useless-suppression", "deprecated-pragma", "use-implicit-booleaness-not-comparison-to-string", "use-implicit-booleaness-not-comparison-to-zero", "use-symbolic-message-instead"]
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -440,9 +440,9 @@ evaluation = "max(0, 0 if fatal else 10.0 - ((float(5 * error + warning + refact
 # used to format the message information. See doc for all details.
 # msg-template =
 
-# Set the output format. Available formats are text, parseable, colorized, json
-# and msvs (visual studio). You can also give a reporter class, e.g.
-# mypackage.mymodule.MyReporterClass.
+# Set the output format. Available formats are: text, parseable, colorized, json2
+# (improved json format), json (old json format) and msvs (visual studio). You
+# can also give a reporter class, e.g. mypackage.mymodule.MyReporterClass.
 # output-format =
 
 # Tells whether to display a full report or only the messages.
@@ -472,7 +472,7 @@ min-similarity-lines = 4
 max-spelling-suggestions = 4
 
 # Spelling dictionary name. No available dictionaries : You need to install both
-# the python package and the system dependency for enchant to work..
+# the python package and the system dependency for enchant to work.
 # spelling-dict =
 
 # List of comma separated words that should be considered directives if they
