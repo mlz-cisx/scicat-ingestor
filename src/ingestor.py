@@ -43,6 +43,7 @@ class Ingestor:
         exp = mapping['experiment']
         now = datetime.now()
         np3y = now + relativedelta(years=3)
+        np10y = now + relativedelta(years=10)
 
         d = dataset.Dataset()
 
@@ -62,9 +63,8 @@ class Ingestor:
         #d.fields.ownerGroup=msg['metadata']['Exp']['proposal']
         d.fields.accessGroups = ["mlz", "resi"]
         d.fields.datasetlifecycle.dateOfDiskPurging = np3y.isoformat()
-        d.fields.datasetlifecycle.archiveRetentionTime = np3y.isoformat()
+        d.fields.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
         d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
-        d.fields.datasetlifecycle.publishedOn = np3y.isoformat()
         d.fields.isPublished = False
         sdm = {}
         for f, fv in md.items():
