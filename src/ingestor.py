@@ -37,6 +37,15 @@ class Ingestor:
         self.log.debug(r.text)
         self.token = r.json()['access_token']
 
+    def post(self, path, **kwds):
+        r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if r.statusCode>=400:
+           i.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+           r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        return r
+
+
+
     def createDataset(self, msg):
         md = msg['metadata']
         mapping = msg['mapping']
@@ -79,9 +88,9 @@ class Ingestor:
 
         j = d._toJson()
 
-        r = requests.post(
-            f'{self.url}api/v3/Datasets',
-            headers={"Authorization": f"Bearer {self.token}"}, json=j
+        r = self.post(
+            'api/v3/Datasets',
+            json=j
         )
         self.log.debug(r.text)
         self.pid = r.json().get('pid')
@@ -102,8 +111,7 @@ class Ingestor:
         upid = requests.utils.quote(self.pid, safe='')
 
         r = requests.post(
-            f'{self.url}api/v3/Datasets/{upid}/origdatablocks/', json=j,
-            headers={"Authorization": f"Bearer {self.token}"}
+            'api/v3/Datasets/{upid}/origdatablocks/', json=j
         )
         self.log.debug(r.text)
 
