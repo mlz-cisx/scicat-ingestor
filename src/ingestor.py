@@ -50,6 +50,7 @@ class Ingestor:
         md = msg['metadata']
         mapping = msg['mapping']
         exp = mapping['experiment']
+        fileinfo = mapping['fileinfo']
         now = datetime.now()
         np3y = now + relativedelta(years=3)
         np10y = now + relativedelta(years=10)
@@ -64,7 +65,7 @@ class Ingestor:
         d.fields.contactEmail = "bjoern.pedersen@frm2.tum.de"
         #d.fields.contactEmail=msg['metadata']['Exp']['localcontact']
         d.fields.ownerEmail = "bjoern.pedersen@frm2.tum.de"
-        d.fields.sourceFolder = "/some/folder"
+        d.fields.sourceFolder = fileinfo.get['basepath']
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
@@ -92,13 +93,13 @@ class Ingestor:
             'api/v3/Datasets',
             json=j
         )
-        self.log.debug(r.text)
+        self.log.debug(pprint.pformat(r.text))
         self.pid = r.json().get('pid')
 
     def addDataBlock(self, flist):
         self.log.info(flist)
         b = datablock.OrigDatablock()
-        for f in flist:
+        for f in flist['filenames']:
             fi = datablock.Datafile(f, datetime.now().isoformat())
             fi.size = 200
 
@@ -113,7 +114,7 @@ class Ingestor:
         r = requests.post(
             'api/v3/Datasets/{upid}/origdatablocks/', json=j
         )
-        self.log.debug(r.text)
+        self.log.debug(pprint.pformat(r.text))
 
     async def consume(self):
         properties: dict[str, str] = defaultdict(str)
@@ -135,10 +136,10 @@ class Ingestor:
         self, msg_raw: AMQPMessage, message_context: MessageContext
     ):
         msg = json.loads(format(msg_raw))
-        #self.log.debug(pprint.pformat(msg))
         if self.pid != msg.get('id', None) and msg.get('type') == 'scan.end':
+            self.log.debug(pprint.pformat(msg))
             self.createDataset(msg)
-            fp = msg.get('filepaths')
+            fp = msg.get('fileinfo')
             if fp:
                 self.addDataBlock(fp)
 
