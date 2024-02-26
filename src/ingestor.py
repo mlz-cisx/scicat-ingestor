@@ -39,7 +39,7 @@ class Ingestor:
 
     def post(self, path, **kwds):
         r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
-        if r.statusCode>=400:
+        if r.status_code>=400:
            i.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
         return r
