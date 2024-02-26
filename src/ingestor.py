@@ -106,7 +106,7 @@ class Ingestor:
 
         b.size = len(b.dataFileList)
         j = asdict(b)
-        self.log.debug(j)
+        #self.log.debug(j)
 
         upid = requests.utils.quote(self.pid, safe='')
 
@@ -135,7 +135,7 @@ class Ingestor:
         self, msg_raw: AMQPMessage, message_context: MessageContext
     ):
         msg = json.loads(format(msg_raw))
-        self.log.debug(pprint.pformat(msg))
+        #self.log.debug(pprint.pformat(msg))
         if self.pid != msg.get('id', None) and msg.get('type') == 'scan.end':
             self.createDataset(msg)
             fp = msg.get('filepaths')
