@@ -52,6 +52,7 @@ class Ingestor:
         mapping = msg['mapping']
         exp = mapping['experiment']
         fileinfo = msg['fileinfo']
+        proposal = md[exp]['proposal']
         now = datetime.now()
         np3y = now + relativedelta(years=3)
         np10y = now + relativedelta(years=10)
@@ -70,7 +71,8 @@ class Ingestor:
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
-        d.fields.ownerGroup = md[exp]['proposal']
+        d.fields.ownerGroup = proposal
+        d.fields.proposalId = proposal
         #d.fields.ownerGroup=msg['metadata']['Exp']['proposal']
         d.fields.accessGroups = ["mlz", "resi"]
         d.fields.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
