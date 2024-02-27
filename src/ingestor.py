@@ -34,13 +34,14 @@ class Ingestor:
             self.url + "api/v3/Users/login",
             json={"username": user, "password": passwd}
         )
-        self.log.debug(r.text)
+        if r.status_code>=400:
+           self.log.warn(r.text)
         self.token = r.json()['access_token']
 
     def post(self, path, **kwds):
         r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
         if r.status_code>=400:
-           i.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+           self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
         return r
 
@@ -99,20 +100,22 @@ class Ingestor:
     def addDataBlock(self, flist):
         self.log.info(flist)
         b = datablock.OrigDatablock()
+        totalsize=0
         for f in flist['filenames']:
             fi = datablock.Datafile(f, datetime.now().isoformat())
-            fi.size = 200
+            fi.size = int(flist['fileinfo'].get(f,{}).get('size',0))
+            totalsize += fi.size
 
             b.dataFileList.append(fi)
 
-        b.size = len(b.dataFileList)
+        b.size = totalsize
         j = asdict(b)
         #self.log.debug(j)
 
         upid = requests.utils.quote(self.pid, safe='')
 
-        r = requests.post(
-            'api/v3/Datasets/{upid}/origdatablocks/', json=j
+        r = self.post(
+            f'api/v3/Datasets/{upid}/origdatablocks/', json=j
         )
         self.log.debug(pprint.pformat(r.text))
 
