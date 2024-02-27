@@ -51,13 +51,13 @@ class Ingestor:
         md = msg['metadata']
         mapping = msg['mapping']
         exp = mapping['experiment']
-        fileinfo = mapping['fileinfo']
+        fileinfo = msg['fileinfo']
         now = datetime.now()
         np3y = now + relativedelta(years=3)
         np10y = now + relativedelta(years=10)
 
         d = dataset.Dataset()
-
+        d.fields.id=msg['id']
         d.fields.datasetName = md[exp]['title']
         #d.fields.datasetName = msg['metadata']['Exp']['title']
         d.fields.creationLocation = 'MLZ'
@@ -66,7 +66,7 @@ class Ingestor:
         d.fields.contactEmail = "bjoern.pedersen@frm2.tum.de"
         #d.fields.contactEmail=msg['metadata']['Exp']['localcontact']
         d.fields.ownerEmail = "bjoern.pedersen@frm2.tum.de"
-        d.fields.sourceFolder = fileinfo.get['basepath']
+        d.fields.sourceFolder = fileinfo.get('basepath', '/')
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
