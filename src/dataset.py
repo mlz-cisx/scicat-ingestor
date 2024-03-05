@@ -43,7 +43,8 @@ class DatasetFields:
     ownerGroup: str = "mlz"
     accessGroups: list = field(default_factory=list)
     proposalId: str = ""
-    sampleId: str = "ad2YBhhyw"
+    sampleId: str = ""
+    instrumentId: str = "mlz-dev-data700a1b00-2c26-485d-a781-f077770208e7"
     datasetlifecycle: Lifecycle = field(default_factory=Lifecycle)
 
 
