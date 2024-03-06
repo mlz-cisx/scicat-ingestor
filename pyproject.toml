@@ -14,11 +14,11 @@ description = "scicat ingestor service"
 authors = [
     { name = "Bjoern Pedersen", email = "bjoern.pedersen@frm2.tum.de" }
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 dependencies = [
    "requests",
    "dateutils",
-   "rstream",
+   "rstream>=0.17.0",
   ]
 dynamic = [
     "version",

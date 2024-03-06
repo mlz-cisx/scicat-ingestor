@@ -13,12 +13,11 @@ import requests
 from dateutil.relativedelta import relativedelta
 
 from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
-    MessageContext, OffsetType, amqp_decoder
-
+    MessageContext, OffsetType, amqp_decoder, OnClosedErrorInfo
 import datablock
 import dataset
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 STREAM = "xresd"
 
@@ -28,6 +27,8 @@ class Ingestor:
         self.url = url
         self.pid = None
         self.log = logging.getLogger('Ingestor')
+        self.log.level= logging.DEBUG
+        self.consumer = None
 
     def login(self, user="ingestor", passwd="aman"):
         r = requests.post(
@@ -43,6 +44,7 @@ class Ingestor:
         if r.status_code>=400:
            self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        self.log.warning(pprint.pformat(r))
         return r
 
 
@@ -53,6 +55,26 @@ class Ingestor:
         exp = mapping['experiment']
         fileinfo = msg['fileinfo']
         proposal = md[exp]['proposal']
+        counterinfo = msg.get('counterinfo')
+        scaninfo = msg.get('scaninfo')
+        statistics = msg.get('statistics')
+
+        self.log.debug("===== mapping =====")
+        self.log.debug(pprint.pformat(mapping))
+        self.log.debug("===== metadata =====")
+        self.log.debug(pprint.pformat(md))
+        self.log.debug("===== fileinfo =====")
+        self.log.debug(pprint.pformat(fileinfo))
+        self.log.debug("===== proposal =====")
+        self.log.debug(pprint.pformat(proposal))
+        self.log.debug("===== counterinfo =====")
+        self.log.debug(pprint.pformat(counterinfo))
+        self.log.debug("===== scaninfo =====")
+        self.log.debug(pprint.pformat(scaninfo))
+        self.log.debug("===== statistics =====")
+        self.log.debug(pprint.pformat(statistics))
+
+
         now = datetime.now()
         np3y = now + relativedelta(years=3)
         np10y = now + relativedelta(years=10)
@@ -141,20 +163,35 @@ class Ingestor:
         self, msg_raw: AMQPMessage, message_context: MessageContext
     ):
         msg = json.loads(format(msg_raw))
-        if self.pid != msg.get('id', None) and msg.get('type') == 'scan.end':
-            self.log.debug(pprint.pformat(msg))
+        if self.pid != msg.get('id', None) and msg.get('event') == 'scan.end':
+            #self.log.debug(pprint.pformat(msg))
             self.createDataset(msg)
             fp = msg.get('fileinfo')
             if fp:
                 self.addDataBlock(fp)
 
     async def run_consumer(self):
+        async def on_connection_closed(disconnection_info: OnClosedErrorInfo) -> None:
+            print(
+                "connection has been closed from stream: "
+                + str(disconnection_info.streams)
+                + " for reason: "
+                + str(disconnection_info.reason)
+            )
+
+            for stream in disconnection_info.streams:
+                # restart from last offset in subscriber
+                # alternatively you can specify an offset to reconnect
+                await self.consumer.reconnect_stream(stream)
+
+
         self.consumer = Consumer(
             host=os.environ.get('RMQ_HOST', 'localhost'),
             port=int(os.environ.get('RMQ_PORT', '5552')),
             vhost=os.environ.get('RMQ_VHOST', '/'),
             username=os.environ.get('RMQ_USER', 'guest'),
             password=os.environ.get('RMQ_PASSWORD', 'guest'),
+            on_close_handler=on_connection_closed,
         )
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(
