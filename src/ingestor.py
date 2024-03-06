@@ -82,6 +82,7 @@ class Ingestor:
         d = dataset.Dataset()
         d.fields.id=msg['id']
         d.fields.datasetName = md[exp]['title']
+        d.fields.description = scaninfo[d.fields.id]
         #d.fields.datasetName = msg['metadata']['Exp']['title']
         d.fields.creationLocation = 'MLZ'
         d.fields.owner = "ingestor"
@@ -109,6 +110,8 @@ class Ingestor:
                     sdm[f] = {'value': val[0], 'unit': val[1]}
                 elif isinstance(val, str):
                     sdm[f] = {'value': val, 'unit': ''}
+
+        sdm['runNumber'] = {'value': counterinfo.get('global'), 'unit': ''}
 
         d.fields.scientificMetadata = sdm
 
