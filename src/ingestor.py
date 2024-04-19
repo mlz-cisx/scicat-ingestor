@@ -5,6 +5,7 @@ import logging
 import os
 import pprint
 import signal
+import sys
 from collections import defaultdict
 from datetime import datetime
 from dataclasses import asdict
@@ -33,14 +34,14 @@ class Ingestor:
     def login(self, user="ingestor", passwd="aman"):
         r = requests.post(
             self.url + "api/v3/Users/login",
-            json={"username": user, "password": passwd}
-        )
+            json={"username": user, "password": passwd}, timeout=100)
+
         if r.status_code>=400:
            self.log.warn(r.text)
         self.token = r.json()['access_token']
 
     def post(self, path, **kwds):
-        r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        r=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
         if r.status_code>=400:
            self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
@@ -58,6 +59,7 @@ class Ingestor:
         counterinfo = msg.get('counterinfo')
         scaninfo = msg.get('scaninfo')
         statistics = msg.get('statistics')
+        envdata = msg.get('envdata')
 
         self.log.debug("===== mapping =====")
         self.log.debug(pprint.pformat(mapping))
@@ -73,6 +75,8 @@ class Ingestor:
         self.log.debug(pprint.pformat(scaninfo))
         self.log.debug("===== statistics =====")
         self.log.debug(pprint.pformat(statistics))
+        self.log.debug("===== envdata =====")
+        self.log.debug(pprint.pformat(envdata))
 
 
         now = datetime.now()
@@ -87,9 +91,9 @@ class Ingestor:
         d.fields.creationLocation = 'MLZ'
         d.fields.owner = "ingestor"
         d.fields.principalInvestigator = md[exp]['users']
-        d.fields.contactEmail = "bjoern.pedersen@frm2.tum.de"
+        d.fields.contactEmail = "datasteward@frm2.tum.de"
         #d.fields.contactEmail=msg['metadata']['Exp']['localcontact']
-        d.fields.ownerEmail = "bjoern.pedersen@frm2.tum.de"
+        d.fields.ownerEmail = "datasteward@frm2.tum.de"
         d.fields.sourceFolder = fileinfo.get('basepath', '/')
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
@@ -103,7 +107,17 @@ class Ingestor:
         d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
         d.fields.isPublished = False
         sdm = {}
+        for f, data in envdata.items():
+            if  data.get('std') == 0:
+                sdm[f'{f}'] = {'value':data.get('avg','-'), 'unit': data.get('unit','')}
+            else:
+                sdm[f'{f}_avg'] = {'value':data.get('avg','-'), 'unit': data.get('unit','')}
+                sdm[f'{f}_stddev'] = {'value':data.get('std','-'), 'unit': data.get('unit','')}
+                sdm[f'{f}_min'] = {'value':data.get('min','-'), 'unit': data.get('unit','')}
+                sdm[f'{f}_max'] = {'value':data.get('max','-'), 'unit': data.get('unit','')}
+
         for f, fv in md.items():
+            if f in envdata: continue
             val = fv.get('value')
             if val:
                 if isinstance(val, list):
@@ -154,7 +168,10 @@ class Ingestor:
         stream = os.environ.get('RMQ_STREAM')
         self.log.debug(stream)
 
-        await self.consumer.start()
+        try:
+            await self.consumer.start()
+        except Excpetion:
+            sys.exit(-1)
         await self.consumer.subscribe(
             stream=stream, callback=self.on_message, decoder=amqp_decoder,
             properties=properties, offset_specification=offsetspec
@@ -172,21 +189,34 @@ class Ingestor:
             fp = msg.get('fileinfo')
             if fp:
                 self.addDataBlock(fp)
+    async def on_connection_closed(disconnection_info: OnClosedErrorInfo) -> None:
+        self.log.warning(
+            "connection has been closed from stream: "
+            + str(disconnection_info.streams)
+            + " for reason: "
+            + str(disconnection_info.reason)
+        )
+        await asyncio.sleep(2)
+        # reconnect just if the partition exists
+        for stream in on_closed_info.streams:
+            backoff = 1
+            while True:
+                try:
+                    print("reconnecting stream: {}".format(stream))
+                    if consumer is not None:
+                        await consumer.reconnect_stream(stream)
+                    break
+                except Exception as ex:
+                    if backoff > 32:
+                        # failed to found the leader
+                        print("reconnection failed")
+                        sys.exit(-1)
+                    backoff = backoff * 2
+                    print("exception reconnecting waiting 120s: " + str(ex))
+                    await asyncio.sleep(30)
+                    continue
 
     async def run_consumer(self):
-        async def on_connection_closed(disconnection_info: OnClosedErrorInfo) -> None:
-            print(
-                "connection has been closed from stream: "
-                + str(disconnection_info.streams)
-                + " for reason: "
-                + str(disconnection_info.reason)
-            )
-
-            for stream in disconnection_info.streams:
-                # restart from last offset in subscriber
-                # alternatively you can specify an offset to reconnect
-                await self.consumer.reconnect_stream(stream)
-
 
         self.consumer = Consumer(
             host=os.environ.get('RMQ_HOST', 'localhost'),
@@ -194,14 +224,20 @@ class Ingestor:
             vhost=os.environ.get('RMQ_VHOST', '/'),
             username=os.environ.get('RMQ_USER', 'guest'),
             password=os.environ.get('RMQ_PASSWORD', 'guest'),
-            on_close_handler=on_connection_closed,
+            on_close_handler=self.on_connection_closed,
         )
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(
             signal.SIGINT, lambda: asyncio.create_task(self.consumer.close())
         )
 
-        await self.consume()
+        task = asyncio.create_task(self.consume())
+        done, _ = await asyncio.wait([task])
+
+        for task in done:
+            if task.exception():
+                raise task.exception()
+            self.log.info(task.result())
 
     def run(self):
         asyncio.run(self.run_consumer(), debug=False)
