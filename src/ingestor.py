@@ -183,6 +183,7 @@ class Ingestor:
         self, msg_raw: AMQPMessage, message_context: MessageContext
     ):
         msg = json.loads(format(msg_raw))
+        self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
         if self.pid != msg.get('id', None) and msg.get('event') == 'scan.end':
             #self.log.debug(pprint.pformat(msg))
             self.createDataset(msg)
