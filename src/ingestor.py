@@ -54,12 +54,12 @@ class Ingestor:
         md = msg['metadata']
         mapping = msg['mapping']
         exp = mapping['experiment']
-        fileinfo = msg['fileinfo']
+        fileinfo = msg.get('fileinfo', {})
         proposal = md[exp]['proposal']
-        counterinfo = msg.get('counterinfo')
-        scaninfo = msg.get('scaninfo')
-        statistics = msg.get('statistics')
-        envdata = msg.get('envdata')
+        counterinfo = msg.get('counterinfo',{})
+        scaninfo = msg.get('scaninfo',{})
+        statistics = msg.get('statistics',{})
+        envdata = msg.get('envdata', {})
 
         self.log.debug("===== mapping =====")
         self.log.debug(pprint.pformat(mapping))
@@ -86,7 +86,10 @@ class Ingestor:
         d = dataset.Dataset()
         d.fields.id=msg['id']
         d.fields.datasetName = md[exp]['title']
-        d.fields.description = scaninfo[d.fields.id]
+        if scaninfo:
+            d.fields.description = scaninfo[d.fields.id]
+        else:
+            d.fields.description="not available"
         #d.fields.datasetName = msg['metadata']['Exp']['title']
         d.fields.creationLocation = 'MLZ'
         d.fields.owner = "ingestor"
@@ -94,7 +97,8 @@ class Ingestor:
         d.fields.contactEmail = "datasteward@frm2.tum.de"
         #d.fields.contactEmail=msg['metadata']['Exp']['localcontact']
         d.fields.ownerEmail = "datasteward@frm2.tum.de"
-        d.fields.sourceFolder = fileinfo.get('basepath', '/')
+        if fileinfo:
+            d.fields.sourceFolder = fileinfo.get('basepath', '/')
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
@@ -142,7 +146,7 @@ class Ingestor:
         self.log.info(flist)
         b = datablock.OrigDatablock()
         totalsize=0
-        for f in flist['filenames']:
+        for f in flist.get('filenames',[]):
             fi = datablock.Datafile(f, datetime.now().isoformat())
             fi.size = int(flist['fileinfo'].get(f,{}).get('size',0))
             totalsize += fi.size
@@ -184,7 +188,7 @@ class Ingestor:
     ):
         msg = json.loads(format(msg_raw))
         self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
-        if self.pid != msg.get('id', None) and msg.get('event') == 'scan.end':
+        if self.pid != msg.get('id', None) and msg.get('event') == 'scan.end' or msg.get('type') == 'scan.end':
             #self.log.debug(pprint.pformat(msg))
             self.createDataset(msg)
             fp = msg.get('fileinfo')
