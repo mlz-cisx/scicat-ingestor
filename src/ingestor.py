@@ -42,10 +42,13 @@ class Ingestor:
 
     def post(self, path, **kwds):
         r=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
-        if r.status_code>=400:
+        if  400 <= r.status_code < 500 :
+           # try relogin
            self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
-        self.log.warning(pprint.pformat(r))
+        if r.status_code > 399:
+            self.log.warning(pprint.pformat(r))
+            self.log.debug(pprint.pformat(kwds))
         return r
 
 
@@ -99,12 +102,15 @@ class Ingestor:
         d.fields.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
             d.fields.sourceFolder = fileinfo.get('basepath', '/')
+        else:
+            d.fields.sourceFolder='/'
+        
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
         d.fields.ownerGroup = proposal
         d.fields.proposalId = proposal
-        #d.fields.ownerGroup=msg['metadata']['Exp']['proposal']
+        d.fields.ownerGroup=msg['metadata']['Exp']['proposal'] or 'scicat'
         d.fields.accessGroups = ["mlz", "resi"]
         d.fields.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
         d.fields.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
@@ -125,13 +131,20 @@ class Ingestor:
             val = fv.get('value')
             if val:
                 if isinstance(val, list):
-                    sdm[f] = {'value': val[0], 'unit': val[1]}
+                    if  ',' in val[1]:
+                        sdm[f] = {'value': f'{val[0]} {val[1]}', 'unit':''}
+                    elif isinstance(val[0], (int,float)):
+                        sdm[f] = {'value': val[0], 'unit': val[1]}
+                    else:
+                         # handle mixed type devices that return a str for some settings
+                         sdm[f] = {'value': str(val[0]), 'unit': ''}
                 elif isinstance(val, str):
                     sdm[f] = {'value': val, 'unit': ''}
 
-        sdm['runNumber'] = {'value': counterinfo.get('global'), 'unit': ''}
+        sdm['runNumber'] = {'value': counterinfo.get('global',-1), 'unit': ''}
 
         d.fields.scientificMetadata = sdm
+        self.log.debug(pprint.pformat(sdm))
 
         j = d._toJson()
 
