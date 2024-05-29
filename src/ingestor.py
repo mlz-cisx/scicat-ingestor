@@ -24,6 +24,38 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Ingestor:
+    # def __init__(self, base_url: str):
+    #     self._base_url = base_url + "/api/v3"
+    #     self._access_token = ""
+    #     self._headers = {}
+
+    # def login(self, username: str, password: str):
+    #     """
+    #     Sign in to SciCat and set the access token for this instance.
+
+    #     Parameters
+    #     ----------
+    #     username : str
+    #       Username of a functional account
+    #     password : str
+    #       Password of a functional account
+
+    #     Returns
+    #     -------
+    #     None
+    #     """
+
+    #     endpoint = "/Users/login"
+    #     url = self._base_url + endpoint
+    #     credentials = {"username": username, "password": password}
+    #     res = requests.post(url, json=credentials, timeout=100)
+
+    #     if res.status_code >= 400:
+    #         self.log.warn(res.text)
+    #     self.token = res.json()['access_token']
+
+        # self._access_token = res.json()["id"]
+        # self._headers["Authorization"] = self._access_token
     def __init__(self, url):
         self.url = url
         self.pid = None
