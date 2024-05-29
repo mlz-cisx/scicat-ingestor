@@ -14,6 +14,7 @@ import requests
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 
+from urllib import parse
 from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
     MessageContext, OffsetType, amqp_decoder, OnClosedErrorInfo
 import datablock
@@ -23,6 +24,38 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Ingestor:
+    # def __init__(self, base_url: str):
+    #     self._base_url = base_url + "/api/v3"
+    #     self._access_token = ""
+    #     self._headers = {}
+
+    # def login(self, username: str, password: str):
+    #     """
+    #     Sign in to SciCat and set the access token for this instance.
+
+    #     Parameters
+    #     ----------
+    #     username : str
+    #       Username of a functional account
+    #     password : str
+    #       Password of a functional account
+
+    #     Returns
+    #     -------
+    #     None
+    #     """
+
+    #     endpoint = "/Users/login"
+    #     url = self._base_url + endpoint
+    #     credentials = {"username": username, "password": password}
+    #     res = requests.post(url, json=credentials, timeout=100)
+
+    #     if res.status_code >= 400:
+    #         self.log.warn(res.text)
+    #     self.token = res.json()['access_token']
+
+        # self._access_token = res.json()["id"]
+        # self._headers["Authorization"] = self._access_token
     def __init__(self, url):
         self.url = url
         self.pid = None
@@ -36,23 +69,98 @@ class Ingestor:
             json={"username": user, "password": passwd}, timeout=100)
 
         if r.status_code>=400:
-           self.log.warn(r.text)
+           self.log.warning(r.text)
         self.token = r.json()['access_token']
 
     def post(self, path, **kwds):
-        r=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
-        if  400 <= r.status_code < 500 :
+        res=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if  400 <= res.status_code < 500 :
            # try relogin
            self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
-           r=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
-        if r.status_code > 399:
-            self.log.warning(pprint.pformat(r))
+           res=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if res.status_code > 399:
+            self.log.warning(pprint.pformat(res))
             self.log.debug(pprint.pformat(kwds))
-        return r
+        return res
 
+    def get(self, path, **kwds):
+        res=  requests.get(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if  400 <= res.status_code < 500 :
+           # try relogin
+           self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+           res= requests.get(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if res.status_code > 399:
+            self.log.warning(pprint.pformat(res))
+            self.log.debug(pprint.pformat(kwds))
+        return res
 
+    def get_proposal_by_pid(self, pid) -> dict:
+        """
+            Get proposal by pid.
+
+            Parameters
+        ----------
+            pid : str
+            The pid of the proposal
+
+            Returns
+        -------
+            dict
+            The proposal with the requested pid
+        """
+
+        endpoint = f"api/v3/Proposals/{pid}"
+        res = self.get(endpoint)
+
+        if res.status_code >= 400:
+            self.log.warn(res.text)
+
+        try:
+            return res.json()
+        except Exception as e :
+            return None
+
+    def get_instrument_by_pid(self, pid) -> dict:
+        """
+            Get an instrument by pid.
+
+            Parameters
+        ----------
+            pid : str
+            The pid of the instrument
+
+            Returns
+        -------
+            dict
+            The instrument with the requested pid
+        """
+
+        endpoint = f"api/v3/Instruments/{pid}"
+        res = self.get(endpoint)
+
+        if res.status_code >= 400:
+            self.log.warn(res.text)
+
+        try:
+            return res.json()
+        except Exception as e :
+            return None
+
+        # encoded_pid = parse.quote_plus(pid)
+        # endpoint = "/Instruments/{}".format(encoded_pid)
+        # url = url + "/api/v3" + endpoint
+        # res = requests.get(url, headers=self._headers)
+
+        # if res.status_code >= 400:
+        #     self.log.warn(res.text)
+
+        # try:
+        #     return res.json()
+        # except Exception as e :
+        #     return None
 
     def createDataset(self, msg):
+    #def createDataset(self, msg):
         md = msg['metadata']
         mapping = msg['mapping']
         exp = mapping['experiment']
@@ -62,6 +170,10 @@ class Ingestor:
         scaninfo = msg.get('scaninfo',{})
         statistics = msg.get('statistics',{})
         envdata = msg.get('envdata', {})
+        instrument =  md[exp].get('instrument')
+
+
+        #instrumentuid = self.get_instrument_by_pid(instrument)
 
         self.log.debug("===== mapping =====")
         self.log.debug(pprint.pformat(mapping))
@@ -79,6 +191,7 @@ class Ingestor:
         self.log.debug(pprint.pformat(statistics))
         self.log.debug("===== envdata =====")
         self.log.debug(pprint.pformat(envdata))
+        self.log.debug(pprint.pformat(instrument))
 
 
         now = datetime.now()
@@ -154,6 +267,10 @@ class Ingestor:
         self.log.debug(pprint.pformat(r.text))
         self.pid = r.json().get('pid')
 
+
+
+
+
     def addDataBlock(self, flist):
         self.log.info(flist)
         b = datablock.OrigDatablock()
@@ -171,10 +288,36 @@ class Ingestor:
 
         upid = requests.utils.quote(self.pid, safe='')
 
-        r = self.post(
+        res = self.post(
             f'api/v3/Datasets/{upid}/origdatablocks/', json=j
         )
-        self.log.debug(pprint.pformat(r.text))
+        self.log.debug(pprint.pformat(res.text))
+        # ir = requests.post(
+        #     f'{self.url}api/v3/instruments/',
+        #     headers={"Authorization": f"Bearer {self.token}"}, json= rj
+        # )
+
+        # self.log.debug(ir.text)
+        self.log.debug(self.token)
+
+
+    # def createProposal(self, proposal):
+    # def post_proposal_by_pid(self,pid:str) -> dict:
+    #     endpoint = "/Proposals/"
+    #     #url = f'{self.url}api/v3 + endpoint + pid'
+    #     res = requests.post(f'{self.url}api/v3 + endpoint + pid', headers=self._headers)
+    #     if res.status_code != 200:
+    #         sys.exit(res.text)
+    #     return res.json()
+        # res = requests.post(
+        #           f'{self.url}api/v3/proposals/',
+        #           headers={"Authorization": f"Bearer {self.token}"}, json=pj
+        #      )
+
+
+        #     self.pid = pr.json().get('pid')
+        #     #self.log.debug(pprint.pformat(pr.text))
+        #     self.log.debug(pr.text)
 
     async def consume(self):
         properties: dict[str, str] = defaultdict(str)
@@ -273,6 +416,7 @@ def run():
         i.token = os.environ.get('SCICAT_TOKEN')
     else:
         i.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+
     i.run()
 
 
