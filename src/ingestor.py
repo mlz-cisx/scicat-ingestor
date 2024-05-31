@@ -146,21 +146,8 @@ class Ingestor:
         except Exception as e :
             return None
 
-        # encoded_pid = parse.quote_plus(pid)
-        # endpoint = "/Instruments/{}".format(encoded_pid)
-        # url = url + "/api/v3" + endpoint
-        # res = requests.get(url, headers=self._headers)
-
-        # if res.status_code >= 400:
-        #     self.log.warn(res.text)
-
-        # try:
-        #     return res.json()
-        # except Exception as e :
-        #     return None
 
     def createDataset(self, msg):
-    #def createDataset(self, msg):
         md = msg['metadata']
         mapping = msg['mapping']
         exp = mapping['experiment']
@@ -210,7 +197,6 @@ class Ingestor:
         d.fields.owner = "ingestor"
         d.fields.principalInvestigator = md[exp]['users']
         d.fields.contactEmail = "datasteward@frm2.tum.de"
-        #d.fields.contactEmail=msg['metadata']['Exp']['localcontact']
         d.fields.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
             d.fields.sourceFolder = fileinfo.get('basepath', '/')
@@ -292,32 +278,7 @@ class Ingestor:
             f'api/v3/Datasets/{upid}/origdatablocks/', json=j
         )
         self.log.debug(pprint.pformat(res.text))
-        # ir = requests.post(
-        #     f'{self.url}api/v3/instruments/',
-        #     headers={"Authorization": f"Bearer {self.token}"}, json= rj
-        # )
-
-        # self.log.debug(ir.text)
         self.log.debug(self.token)
-
-
-    # def createProposal(self, proposal):
-    # def post_proposal_by_pid(self,pid:str) -> dict:
-    #     endpoint = "/Proposals/"
-    #     #url = f'{self.url}api/v3 + endpoint + pid'
-    #     res = requests.post(f'{self.url}api/v3 + endpoint + pid', headers=self._headers)
-    #     if res.status_code != 200:
-    #         sys.exit(res.text)
-    #     return res.json()
-        # res = requests.post(
-        #           f'{self.url}api/v3/proposals/',
-        #           headers={"Authorization": f"Bearer {self.token}"}, json=pj
-        #      )
-
-
-        #     self.pid = pr.json().get('pid')
-        #     #self.log.debug(pprint.pformat(pr.text))
-        #     self.log.debug(pr.text)
 
     async def consume(self):
         properties: dict[str, str] = defaultdict(str)
@@ -354,6 +315,7 @@ class Ingestor:
             fp = msg.get('fileinfo')
             if fp:
                 self.addDataBlock(fp)
+
     async def on_connection_closed(disconnection_info: OnClosedErrorInfo) -> None:
         self.log.warning(
             "connection has been closed from stream: "
