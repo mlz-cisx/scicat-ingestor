@@ -19,6 +19,9 @@ from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
     MessageContext, OffsetType, amqp_decoder, OnClosedErrorInfo
 import datablock
 import dataset
+import dataProposal
+import dataInstrument
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,13 +67,22 @@ class Ingestor:
         self.consumer = None
 
     def login(self, user="ingestor", passwd="aman"):
-        r = requests.post(
+
+        res = requests.post(
             self.url + "api/v3/Users/login",
             json={"username": user, "password": passwd}, timeout=100)
 
-        if r.status_code>=400:
-           self.log.warning(r.text)
-        self.token = r.json()['access_token']
+        if res.status_code>=400:
+           self.log.warning(res.text)
+        self.token = res.json()['access_token']
+
+        res = requests.post(
+            self.url + "api/v3/Users/login",
+            json={"username": "proposalIngestor", "password": passwd}, timeout=100)
+
+        if res.status_code>=400:
+           self.log.warning(res.text)
+        self.proposaltoken = res.json()['access_token']
 
     def post(self, path, **kwds):
         res=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
@@ -89,6 +101,28 @@ class Ingestor:
            # try relogin
            self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
            res= requests.get(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if res.status_code > 399:
+            self.log.warning(pprint.pformat(res))
+            self.log.debug(pprint.pformat(kwds))
+        return res
+
+    def postProposal(self, path, **kwds):
+        res=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if  400 <= res.status_code < 500 :
+           # try relogin
+           self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+           res=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.proposaltoken}"}, **kwds)
+        if res.status_code > 399:
+            self.log.warning(pprint.pformat(res))
+            self.log.debug(pprint.pformat(kwds))
+        return res
+
+    def postInstrument(self, path, **kwds):
+        res=  requests.post(f'{self.url}{path}',timeout=100, headers={"Authorization": f"Bearer {self.token}"}, **kwds)
+        if  400 <= res.status_code < 500 :
+           # try relogin
+           self.login(os.environ.get('SCICAT_USER'), os.environ.get('SCICAT_PASSWORD'))
+           res=  requests.post(f'{self.url}{path}', headers={"Authorization": f"Bearer {self.proposaltoken}"}, **kwds)
         if res.status_code > 399:
             self.log.warning(pprint.pformat(res))
             self.log.debug(pprint.pformat(kwds))
@@ -113,11 +147,12 @@ class Ingestor:
         res = self.get(endpoint)
 
         if res.status_code >= 400:
-            self.log.warn(res.text)
+            self.log.warning(res.text)
 
         try:
             return res.json()
-        except Exception as e :
+        except Exception:
+            self.log.exception('error get proposal')
             return None
 
     def get_instrument_by_pid(self, pid) -> dict:
@@ -143,7 +178,8 @@ class Ingestor:
 
         try:
             return res.json()
-        except Exception as e :
+        except Exception:
+            self.log.exception('error get proposal')
             return None
 
 
@@ -191,6 +227,7 @@ class Ingestor:
         if scaninfo:
             d.fields.description = scaninfo[d.fields.id]
         else:
+
             d.fields.description="not available"
         #d.fields.datasetName = msg['metadata']['Exp']['title']
         d.fields.creationLocation = 'MLZ'
@@ -208,14 +245,51 @@ class Ingestor:
         d.fields.type = "raw"
         d.fields.ownerGroup = proposal
         d.fields.proposalId = proposal
-        d.fields.ownerGroup=msg['metadata']['Exp']['proposal'] or 'scicat'
         d.fields.accessGroups = ["mlz", "resi"]
         d.fields.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
         d.fields.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
         d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
         d.fields.isPublished = False
+        d.fields.ownerGroup = proposal or 'scicat'
+        proposaluid = self.get_proposal_by_pid(proposal)
+        self.log.debug('get_proposal: %r',proposaluid)
+        if proposaluid is not None:
+            d.fields.proposalId = proposaluid['_id']
+        else:
+            p = dataProposal.ProposalDataset()
+            p.fields.proposalId = proposal
+            p.fields.email = "email@tum.com"
+            p.fields.title = "title"
+            p.fields.ownerGroup = "ingestor"
+
+            j = p._toJson()
+            self.log.debug(pprint.pformat(j))
+            r = self.postProposal(
+                'api/v3/proposals',
+                json=j
+            )
+
+            self.log.debug(pprint.pformat(r.text))
+
+        # instrumentuid = self.get_instrument_by_pid(instrument)
+        # if instrumentuid is not None:
+        #     d.fields.instrumentId = instrumentuid
+        # else:
+        #    inst = dataInstrument.InstrumentDataset()
+        #    inst.fields.instrumentId = instrument
+        #    inst.fields.name = "InstName"
+
+        #    j = inst._toJson()
+        #    self.log.debug(pprint.pformat(j))
+        #    r = self.postInstrument(
+        #         'api/v3/instruments',
+        #         json=j
+        #    )
+
+
         sdm = {}
         for f, data in envdata.items():
+            data['unit']=data.get('unit','').replace('A-1','angstrom^-1')
             if  data.get('std') == 0:
                 sdm[f'{f}'] = {'value':data.get('avg','-'), 'unit': data.get('unit','')}
             else:
@@ -225,6 +299,7 @@ class Ingestor:
                 sdm[f'{f}_max'] = {'value':data.get('max','-'), 'unit': data.get('unit','')}
 
         for f, fv in md.items():
+
             if f in envdata: continue
             val = fv.get('value')
             if val:
@@ -232,7 +307,7 @@ class Ingestor:
                     if  ',' in val[1]:
                         sdm[f] = {'value': f'{val[0]} {val[1]}', 'unit':''}
                     elif isinstance(val[0], (int,float)):
-                        sdm[f] = {'value': val[0], 'unit': val[1]}
+                        sdm[f] = {'value': val[0], 'unit': val[1].replace('A-1','angstrom^-1')}
                     else:
                          # handle mixed type devices that return a str for some settings
                          sdm[f] = {'value': str(val[0]), 'unit': ''}
@@ -250,6 +325,8 @@ class Ingestor:
             'api/v3/Datasets',
             json=j
         )
+
+
         self.log.debug(pprint.pformat(r.text))
         self.pid = r.json().get('pid')
 

@@ -61,16 +61,6 @@ class ProposalFields:
 
 
 class ProposalDataset:
-    proposalId: str = ""
-    pi_email: str = ""
-    pi_firstname: str = ""
-    pi_lastname: str = ""
-    email: str = ""
-    firstname: str = ""
-    lastname: str = ""
-    title: str = ""
-
-class DataProposal:
     def __init__(self):
         self.fields = ProposalFields()
 
