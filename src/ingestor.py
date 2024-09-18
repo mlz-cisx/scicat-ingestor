@@ -19,6 +19,9 @@ from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
 import datablock
 import dataproposal
 import dataset
+import dataProposal
+import dataInstrument
+
 
 logging.basicConfig(level=logging.INFO)
 
