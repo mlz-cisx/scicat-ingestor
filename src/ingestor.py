@@ -188,12 +188,12 @@ class Ingestor:
         mapping = msg['mapping']
         exp = mapping['experiment']
         fileinfo = msg.get('fileinfo', {})
-        proposal = md[exp]['proposal']
+        proposal = md[exp]['proposal']['value']
         counterinfo = msg.get('counterinfo',{})
         scaninfo = msg.get('scaninfo',{})
         statistics = msg.get('statistics',{})
         envdata = msg.get('envdata', {})
-        instrument =  md[exp].get('instrument')
+        instrument =  mapping['instrument'].upper()
 
 
         #instrumentuid = self.get_instrument_by_pid(instrument)
@@ -223,7 +223,7 @@ class Ingestor:
 
         d = dataset.Dataset()
         d.fields.id=msg['id']
-        d.fields.datasetName = md[exp]['title']
+        d.fields.datasetName = md[exp]['title']['value']
         if scaninfo:
             d.fields.description = scaninfo[d.fields.id]
         else:
@@ -232,7 +232,7 @@ class Ingestor:
         #d.fields.datasetName = msg['metadata']['Exp']['title']
         d.fields.creationLocation = 'MLZ'
         d.fields.owner = "ingestor"
-        d.fields.principalInvestigator = md[exp]['users']
+        d.fields.principalInvestigator = md[exp]['users']['value']
         d.fields.contactEmail = "datasteward@frm2.tum.de"
         d.fields.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
@@ -264,12 +264,14 @@ class Ingestor:
 
             j = p._toJson()
             self.log.debug(pprint.pformat(j))
-            r = self.postProposal(
+            pr = self.postProposal(
                 'api/v3/proposals',
                 json=j
             )
 
-            self.log.debug(pprint.pformat(r.text))
+            self.log.debug(pprint.pformat(pr.text))
+            propinfo = pr.json()
+            d.fields.proposalId = propinfo['id']
 
         # instrumentuid = self.get_instrument_by_pid(instrument)
         # if instrumentuid is not None:
