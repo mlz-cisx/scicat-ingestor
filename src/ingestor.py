@@ -7,26 +7,18 @@ import pprint
 import signal
 import sys
 from collections import defaultdict
-from datetime import datetime
 from dataclasses import asdict
+from datetime import datetime
 
 import requests
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
+from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
+    MessageContext, OffsetType, OnClosedErrorInfo, amqp_decoder
 
-from rstream import (
-    AMQPMessage,
-    Consumer,
-    ConsumerOffsetSpecification,
-    MessageContext,
-    OffsetType,
-    amqp_decoder,
-    OnClosedErrorInfo,
-)
 import datablock
-import dataset
 import dataProposal
-
+import dataset
 
 logging.basicConfig(level=logging.INFO)
 
