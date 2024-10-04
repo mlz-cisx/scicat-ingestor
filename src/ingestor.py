@@ -17,7 +17,7 @@ from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
     MessageContext, OffsetType, OnClosedErrorInfo, amqp_decoder
 
 import datablock
-import dataProposal
+import dataproposal
 import dataset
 
 logging.basicConfig(level=logging.INFO)
@@ -273,7 +273,7 @@ class Ingestor:
         if proposaluid is not None:
             d.fields.proposalId = proposaluid["_id"]
         else:
-            p = dataProposal.ProposalDataset()
+            p = dataproposal.ProposalDataset()
             p.fields.proposalId = proposal
             p.fields.email = "email@tum.com"
             p.fields.title = "title"
