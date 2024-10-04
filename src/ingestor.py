@@ -415,7 +415,7 @@ class Ingestor:
             self.log.debug(e)
             self.log.debug(format(msg_raw)[:128])
         self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
-        if (msg.get('version') == 'v1alpha1' and
+        if (msg.get('version') == 'v1alpha' and
             self.pid != msg.get("id", None)
             and msg.get("event") == "scan.end"
             or msg.get("type") == "scan.end"
