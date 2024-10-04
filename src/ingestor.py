@@ -12,6 +12,7 @@ from dataclasses import asdict
 
 import requests
 from dateutil.relativedelta import relativedelta
+from dotenv import load_dotenv
 
 from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
     MessageContext, OffsetType, amqp_decoder, OnClosedErrorInfo
@@ -19,8 +20,6 @@ import datablock
 import dataset
 
 logging.basicConfig(level=logging.INFO)
-
-STREAM = "xresd"
 
 
 class Ingestor:
@@ -104,7 +103,7 @@ class Ingestor:
             d.fields.sourceFolder = fileinfo.get('basepath', '/')
         else:
             d.fields.sourceFolder='/'
-        
+
         d.fields.creationTime = now.isoformat()
         d.fields.endTime = now.isoformat()
         d.fields.type = "raw"
@@ -243,6 +242,7 @@ class Ingestor:
             username=os.environ.get('RMQ_USER', 'guest'),
             password=os.environ.get('RMQ_PASSWORD', 'guest'),
             on_close_handler=self.on_connection_closed,
+            load_balancer_mode=True,
         )
         loop = asyncio.get_event_loop()
         loop.add_signal_handler(
@@ -262,6 +262,7 @@ class Ingestor:
 
 
 def run():
+    load_dotenv()
     i = Ingestor(os.environ.get('SCICAT_URL'))
     if os.environ.get('SCICAT_TOKEN'):
         i.token = os.environ.get('SCICAT_TOKEN')

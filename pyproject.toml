@@ -19,6 +19,7 @@ dependencies = [
    "requests",
    "dateutils",
    "rstream>=0.17.0",
+   "python-dotenv",
   ]
 dynamic = [
     "version",
