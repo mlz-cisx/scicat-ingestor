@@ -19,9 +19,6 @@ from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
 import datablock
 import dataproposal
 import dataset
-import dataProposal
-import dataInstrument
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -52,7 +49,6 @@ class Ingestor:
     #     url = self._base_url + endpoint
     #     credentials = {"username": username, "password": password}
     #     res = requests.post(url, json=credentials, timeout=100)
-
     #     if res.status_code >= 400:
     #         self.log.warn(res.text)
     #     self.token = res.json()['access_token']
