@@ -38,6 +38,8 @@ class Ingestor:
         self.log = logging.getLogger("Ingestor")
         self.log.level = logging.DEBUG
         self.consumer = None
+        self.token = None
+        self.proposaltoken = None
 
     def login(self, user="ingestor", passwd="aman"):
         """
@@ -295,7 +297,7 @@ class Ingestor:
 
         instrumentuid = self.get_instrument_by_pid(instrument)
         if instrumentuid is not None:
-             d.fields.instrumentId = instrumentuid['id']
+            d.fields.instrumentId = instrumentuid['id']
         # else:
         #    inst = dataInstrument.InstrumentDataset()
         #    inst.fields.instrumentId = instrument
@@ -414,7 +416,7 @@ class Ingestor:
 
         await self.consumer.run()
 
-    async def on_message(self, msg_raw: AMQPMessage, message_context: MessageContext):
+    async def on_message(self, msg_raw: AMQPMessage, _message_context: MessageContext):
         try:
             msg = json.loads(str(msg_raw._body))
         except Exception as e:
@@ -432,30 +434,27 @@ class Ingestor:
             if fp:
                 self.addDataBlock(fp)
 
-    async def on_connection_closed(disconnection_info: OnClosedErrorInfo) -> None:
+    async def on_connection_closed(self, disconnection_info: OnClosedErrorInfo) -> None:
         self.log.warning(
-            "connection has been closed from stream: "
-            + str(disconnection_info.streams)
-            + " for reason: "
-            + str(disconnection_info.reason)
+            "connection has been closed from stream: %s for reason: %s",disconnection_info.streams, disconnection_info.reason
         )
         await asyncio.sleep(2)
         # reconnect just if the partition exists
-        for stream in on_closed_info.streams:
+        for stream in disconnection_info.streams:
             backoff = 1
             while True:
                 try:
-                    print("reconnecting stream: {}".format(stream))
-                    if consumer is not None:
-                        await consumer.reconnect_stream(stream)
+                    self.log.debug("reconnecting stream: %s", stream)
+                    if self.consumer is not None:
+                        await self.consumer.reconnect_stream(stream)
                     break
                 except Exception as ex:
                     if backoff > 32:
                         # failed to found the leader
-                        print("reconnection failed")
+                        self.log.exception("reconnection failed")
                         sys.exit(-1)
                     backoff = backoff * 2
-                    print("exception reconnecting waiting 120s: " + str(ex))
+                    self.log.warning("exception reconnecting waiting 120s: %s ", ex)
                     await asyncio.sleep(30)
                     continue
 

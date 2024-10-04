@@ -39,7 +39,7 @@ class DatasetFields:
     classification: str = "AV=medium,CO=low"
     license: str = "CC-BY-4.0"
     version: str = ""
-    isPublished: bool = False,
+    isPublished: bool = False
     ownerGroup: str = "mlz"
     accessGroups: list = field(default_factory=list)
     proposalId: str = ""
