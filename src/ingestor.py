@@ -186,7 +186,8 @@ class Ingestor:
 
         try:
             await self.consumer.start()
-        except Excpetion:
+        except Exception as e:
+            self.log.error("stream conn failed: %r", e)
             sys.exit(-1)
         await self.consumer.subscribe(
             stream=stream, callback=self.on_message, decoder=amqp_decoder,
@@ -198,7 +199,11 @@ class Ingestor:
     async def on_message(
         self, msg_raw: AMQPMessage, message_context: MessageContext
     ):
-        msg = json.loads(format(msg_raw))
+        try:
+            msg = json.loads(str(msg_raw._body))
+        except Exception as e:
+           self.log.debug(e)
+           self.log.debug(format(msg_raw)[:128])
         self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
         if self.pid != msg.get('id', None) and msg.get('event') == 'scan.end' or msg.get('type') == 'scan.end':
             #self.log.debug(pprint.pformat(msg))
