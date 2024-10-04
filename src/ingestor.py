@@ -410,7 +410,7 @@ class Ingestor:
 
     async def on_message(self, msg_raw: AMQPMessage, _message_context: MessageContext):
         try:
-            msg = json.loads(str(msg_raw._body))
+            msg = json.loads(msg_raw.body.decode('utf-8'))
         except Exception as e:
             self.log.debug(e)
             self.log.debug(format(msg_raw)[:128])
