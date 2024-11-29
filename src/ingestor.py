@@ -80,7 +80,7 @@ class Ingestor:
         """
 
         res = requests.post(
-            self.url + "api/v3/Users/login",
+            self.url + "api/v3/auth/login",
             json={"username": user, "password": passwd},
             timeout=100,
         )
@@ -90,7 +90,7 @@ class Ingestor:
         self.token = res.json()["access_token"]
 
         res = requests.post(
-            self.url + "api/v3/Users/login",
+            self.url + "api/v3/auth/login",
             json={"username": "proposalIngestor", "password": passwd},
             timeout=100,
         )
