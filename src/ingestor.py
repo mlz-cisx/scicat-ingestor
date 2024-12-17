@@ -9,6 +9,7 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime
+from enum import StrEnum
 
 import requests
 from dateutil.relativedelta import relativedelta
@@ -23,39 +24,13 @@ import dataset
 logging.basicConfig(level=logging.INFO)
 
 
+class AuthStrategy(StrEnum):
+    FUNCTIONAL = "login"
+    LDAP = "ldap"
+
+
 class Ingestor:
-    # def __init__(self, base_url: str):
-    #     self._base_url = base_url + "/api/v3"
-    #     self._access_token = ""
-    #     self._headers = {}
-
-    # def login(self, username: str, password: str):
-    #     """
-    #     Sign in to SciCat and set the access token for this instance.
-
-    #     Parameters
-    #     ----------
-    #     username : str
-    #       Username of a functional account
-    #     password : str
-    #       Password of a functional account
-
-    #     Returns
-    #     -------
-    #     None
-    #     """
-
-    #     endpoint = "/Users/login"
-    #     url = self._base_url + endpoint
-    #     credentials = {"username": username, "password": password}
-    #     res = requests.post(url, json=credentials, timeout=100)
-    #     if res.status_code >= 400:
-    #         self.log.warn(res.text)
-    #     self.token = res.json()['access_token']
-
-        # self._access_token = res.json()["id"]
-        # self._headers["Authorization"] = self._access_token
-    def __init__(self, url):
+    def __init__(self, url, *, auth_strategy=None):
         self.url = url
         self.pid = None
         self.log = logging.getLogger("Ingestor")
@@ -63,6 +38,16 @@ class Ingestor:
         self.consumer = None
         self.token = None
         self.proposaltoken = None
+        if auth_strategy:
+            try:
+                self._auth_strategy = AuthStrategy(auth_strategy)
+            except ValueError as e:
+                raise ValueError(
+                    f"Argument {auth_strategy!r} is not a valid authentication strategy. "
+                    f"Use 'login' or 'ldap'"
+                ) from e
+        else:
+            self._auth_strategy = AuthStrategy.FUNCTIONAL
 
     def login(self, user="ingestor", passwd="aman"):
         """
@@ -80,7 +65,7 @@ class Ingestor:
         """
 
         res = requests.post(
-            self.url + "api/v3/auth/login",
+            f"{self.url}api/v3/auth/{self._auth_strategy}",
             json={"username": user, "password": passwd},
             timeout=100,
         )
@@ -89,9 +74,11 @@ class Ingestor:
             self.log.warning(res.text)
         self.token = res.json()["access_token"]
 
+        # Authenticate for proposals
+        # TODO: is this needed? why is the passwd the same as the normal ingestor?
         res = requests.post(
-            self.url + "api/v3/auth/login",
-            json={"username": "proposalIngestor", "password": passwd},
+            f"{self.url}api/v3/auth/{self._auth_strategy}",
+            json={"username": user, "password": passwd},
             timeout=100,
         )
 
@@ -459,7 +446,9 @@ class Ingestor:
 
     async def on_connection_closed(self, disconnection_info: OnClosedErrorInfo) -> None:
         self.log.warning(
-            "connection has been closed from stream: %s for reason: %s",disconnection_info.streams, disconnection_info.reason
+            "connection has been closed from stream: %s for reason: %s",
+            disconnection_info.streams,
+            disconnection_info.reason
         )
         await asyncio.sleep(2)
         # reconnect just if the partition exists
@@ -496,7 +485,6 @@ class Ingestor:
         loop.add_signal_handler(
             signal.SIGINT, lambda: asyncio.create_task(self.consumer.close())
         )
-
         task = asyncio.create_task(self.consume())
         done, _ = await asyncio.wait([task])
 
@@ -511,7 +499,7 @@ class Ingestor:
 
 def run():
     load_dotenv()
-    i = Ingestor(os.environ.get("SCICAT_URL"))
+    i = Ingestor(os.environ.get("SCICAT_URL"), auth_strategy=os.environ.get("SCICAT_AUTH_STRATEGY"))
     if os.environ.get("SCICAT_TOKEN"):
         i.token = os.environ.get("SCICAT_TOKEN")
     else:
