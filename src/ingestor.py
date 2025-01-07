@@ -21,7 +21,7 @@ import datablock
 import dataproposal
 import dataset
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class AuthStrategy(StrEnum):
@@ -307,7 +307,7 @@ class Ingestor:
 
         instrumentuid = self.get_instrument_by_pid(instrument)
         if instrumentuid is not None:
-            d.fields.instrumentId = instrumentuid['id']
+            d.fields.instrumentId = instrumentuid["id"]
         # else:
         #    inst = dataInstrument.InstrumentDataset()
         #    inst.fields.instrumentId = instrument
@@ -428,13 +428,14 @@ class Ingestor:
 
     async def on_message(self, msg_raw: AMQPMessage, _message_context: MessageContext):
         try:
-            msg = json.loads(msg_raw.body.decode('utf-8'))
+            msg = json.loads(msg_raw.body.decode("utf-8"))
         except Exception as e:
             self.log.debug(e)
             self.log.debug(format(msg_raw)[:128])
         self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
-        if (msg.get('version') == 'v1alpha' and
-            self.pid != msg.get("id", None)
+        if (
+            msg.get("version") == "v1alpha"
+            and self.pid != msg.get("id", None)
             and msg.get("event") == "scan.end"
             or msg.get("type") == "scan.end"
         ):
@@ -448,7 +449,7 @@ class Ingestor:
         self.log.warning(
             "connection has been closed from stream: %s for reason: %s",
             disconnection_info.streams,
-            disconnection_info.reason
+            disconnection_info.reason,
         )
         await asyncio.sleep(2)
         # reconnect just if the partition exists
@@ -471,7 +472,6 @@ class Ingestor:
                     continue
 
     async def run_consumer(self):
-
         self.consumer = Consumer(
             host=os.environ.get("RMQ_HOST", "localhost"),
             port=int(os.environ.get("RMQ_PORT", "5552")),
@@ -499,7 +499,10 @@ class Ingestor:
 
 def run():
     load_dotenv()
-    i = Ingestor(os.environ.get("SCICAT_URL"), auth_strategy=os.environ.get("SCICAT_AUTH_STRATEGY"))
+    i = Ingestor(
+        os.environ.get("SCICAT_URL"),
+        auth_strategy=os.environ.get("SCICAT_AUTH_STRATEGY"),
+    )
     if os.environ.get("SCICAT_TOKEN"):
         i.token = os.environ.get("SCICAT_TOKEN")
     else:
