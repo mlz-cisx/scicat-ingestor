@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass
 
 
-@dataclass(init=True)
+@dataclass
 class ProposalFields:
     ownerGroup: str = ""
     proposalId: str = "prop"

@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass
 
 
-@dataclass(init=True)
+@dataclass
 class InstrumentFields:
     name: str = ""
 

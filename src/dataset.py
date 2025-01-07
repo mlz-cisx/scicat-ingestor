@@ -16,7 +16,7 @@ class Lifecycle:
     archiveStatusMessage: str = "datasetCreated"
 
 
-@dataclass(init=True)
+@dataclass
 class DatasetFields:
     datasetName: str = ""
     principalInvestigator: str = ""
