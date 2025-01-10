@@ -12,14 +12,13 @@ from datetime import datetime
 from enum import StrEnum
 
 import requests
-from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from rstream import AMQPMessage, Consumer, ConsumerOffsetSpecification, \
     MessageContext, OffsetType, OnClosedErrorInfo, amqp_decoder
 
 import datablock
 import dataproposal
-import dataset
+from messageparser import MessageV1Alpha1
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -76,6 +75,7 @@ class Ingestor:
 
         # Authenticate for proposals
         # TODO: is this needed? why is the passwd the same as the normal ingestor?
+        # either config two accounts or let one do both
         res = requests.post(
             f"{self.url}api/v3/auth/{self._auth_strategy}",
             json={"username": user, "password": passwd},
@@ -221,78 +221,14 @@ class Ingestor:
             return None
 
     def createDataset(self, msg):
-        md = msg["metadata"]
-        mapping = msg["mapping"]
-        exp = mapping["experiment"]
-        fileinfo = msg.get("fileinfo", {})
-        proposal = md[exp]["proposal"]["value"]
-        counterinfo = msg.get("counterinfo", {})
-        scaninfo = msg.get("scaninfo", {})
-        statistics = msg.get("statistics", {})
-        envdata = msg.get("envdata", {})
-        instrument = mapping["instrument"].upper()
-
-        # instrumentuid = self.get_instrument_by_pid(instrument)
-
-        self.log.debug("===== mapping =====")
-        self.log.debug(pprint.pformat(mapping))
-        self.log.debug("===== metadata =====")
-        self.log.debug(pprint.pformat(md))
-        self.log.debug("===== fileinfo =====")
-        self.log.debug(pprint.pformat(fileinfo))
-        self.log.debug("===== proposal =====")
-        self.log.debug(pprint.pformat(proposal))
-        self.log.debug("===== counterinfo =====")
-        self.log.debug(pprint.pformat(counterinfo))
-        self.log.debug("===== scaninfo =====")
-        self.log.debug(pprint.pformat(scaninfo))
-        self.log.debug("===== statistics =====")
-        self.log.debug(pprint.pformat(statistics))
-        self.log.debug("===== envdata =====")
-        self.log.debug(pprint.pformat(envdata))
-        self.log.debug(pprint.pformat(instrument))
-
-        now = datetime.now()
-        np3y = now + relativedelta(years=3)
-        np10y = now + relativedelta(years=10)
-
-        d = dataset.Dataset()
-        d.fields.id = msg["id"]
-        d.fields.datasetName = md[exp]["title"]["value"]
-        if scaninfo:
-            d.fields.description = scaninfo[d.fields.id]
-        else:
-
-            d.fields.description = "not available"
-        # d.fields.datasetName = msg['metadata']['Exp']['title']
-        d.fields.creationLocation = "MLZ"
-        d.fields.owner = "ingestor"
-        d.fields.principalInvestigator = md[exp]["users"]["value"]
-        d.fields.contactEmail = "datasteward@frm2.tum.de"
-        d.fields.ownerEmail = "datasteward@frm2.tum.de"
-        if fileinfo:
-            d.fields.sourceFolder = fileinfo.get("basepath", "/")
-        else:
-            d.fields.sourceFolder = "/"
-
-        d.fields.creationTime = now.isoformat()
-        d.fields.endTime = now.isoformat()
-        d.fields.type = "raw"
-        d.fields.ownerGroup = proposal
-        d.fields.proposalId = proposal
-        d.fields.accessGroups = ["mlz", "resi"]
-        d.fields.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
-        d.fields.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
-        d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
-        d.fields.isPublished = False
-        d.fields.ownerGroup = proposal or "scicat"
-        proposaluid = self.get_proposal_by_pid(proposal)
-        self.log.debug("get_proposal: %r", proposaluid)
-        if proposaluid is not None:
-            d.fields.proposalId = proposaluid["_id"]
-        else:
+        data_set = MessageV1Alpha1(self.log).parse_message(
+            msg,
+            pid_cb=self.get_proposal_by_pid,
+            instr_cb=self.get_instrument_by_pid,
+        )
+        if not data_set.fields.proposalId:
             p = dataproposal.ProposalDataset()
-            p.fields.proposalId = proposal
+            p.fields.proposalId = data_set.ownerGroup
             p.fields.email = "email@tum.com"
             p.fields.title = "title"
             p.fields.ownerGroup = "ingestor"
@@ -303,75 +239,9 @@ class Ingestor:
 
             self.log.debug(pprint.pformat(pr.text))
             propinfo = pr.json()
-            d.fields.proposalId = propinfo["id"]
+            data_set.fields.proposalId = propinfo["id"]
 
-        instrumentuid = self.get_instrument_by_pid(instrument)
-        if instrumentuid is not None:
-            d.fields.instrumentId = instrumentuid["id"]
-        # else:
-        #    inst = dataInstrument.InstrumentDataset()
-        #    inst.fields.instrumentId = instrument
-        #    inst.fields.name = "InstName"
-
-        #    j = inst._toJson()
-        #    self.log.debug(pprint.pformat(j))
-        #    r = self.postInstrument(
-        #         'api/v3/instruments',
-        #         json=j
-        #    )
-
-        sdm = {}
-        for f, data in envdata.items():
-            data["unit"] = data.get("unit", "").replace("A-1", "angstrom^-1")
-            if data.get("std") == 0:
-                sdm[f"{f}"] = {
-                    "value": data.get("avg", "-"),
-                    "unit": data.get("unit", ""),
-                }
-            else:
-                sdm[f"{f}_avg"] = {
-                    "value": data.get("avg", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_stddev"] = {
-                    "value": data.get("std", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_min"] = {
-                    "value": data.get("min", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_max"] = {
-                    "value": data.get("max", "-"),
-                    "unit": data.get("unit", ""),
-                }
-
-        for f, fv in md.items():
-
-            if f in envdata:
-                continue
-            val = fv.get("value")
-            if val:
-                if isinstance(val, list):
-                    if "," in val[1]:
-                        sdm[f] = {"value": f"{val[0]} {val[1]}", "unit": ""}
-                    elif isinstance(val[0], (int, float)):
-                        sdm[f] = {
-                            "value": val[0],
-                            "unit": val[1].replace("A-1", "angstrom^-1"),
-                        }
-                    else:
-                        # handle mixed type devices that return a str for some settings
-                        sdm[f] = {"value": str(val[0]), "unit": ""}
-                elif isinstance(val, str):
-                    sdm[f] = {"value": val, "unit": ""}
-
-        sdm["runNumber"] = {"value": counterinfo.get("global", -1), "unit": ""}
-
-        d.fields.scientificMetadata = sdm
-        self.log.debug(pprint.pformat(sdm))
-
-        j = d._toJson()
+        j = data_set._toJson()
 
         r = self.post("api/v3/Datasets", json=j)
 
@@ -433,13 +303,15 @@ class Ingestor:
             self.log.debug(e)
             self.log.debug(format(msg_raw)[:128])
         self.log.debug("msg[:128]: %s", format(msg_raw)[:128])
+        with open('msgs.log', "a") as f:
+            json.dump(msg, f)
+            f.write('\n')
         if (
-            msg.get("version") == "v1alpha"
+            msg.get("version") == "v1alpha1"
             and self.pid != msg.get("id", None)
-            and msg.get("event") == "scan.end"
-            or msg.get("type") == "scan.end"
+            and (msg.get("event") == "scan.end"
+                 or msg.get("type") == "scan.end")
         ):
-            # self.log.debug(pprint.pformat(msg))
             self.createDataset(msg)
             fp = msg.get("fileinfo")
             if fp:
