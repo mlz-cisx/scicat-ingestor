@@ -17,7 +17,7 @@ class Lifecycle:
 
 
 @dataclass
-class DatasetFields:
+class Dataset:
     datasetName: str = ""
     principalInvestigator: str = ""
     endTime: str = ""
@@ -47,10 +47,5 @@ class DatasetFields:
     instrumentId: str = "mlz-dev-data700a1b00-2c26-485d-a781-f077770208e7"
     datasetlifecycle: Lifecycle = field(default_factory=Lifecycle)
 
-
-class Dataset:
-    def __init__(self):
-        self.fields = DatasetFields()
-
     def _toJson(self):
-        return asdict(self.fields)
+        return asdict(self)

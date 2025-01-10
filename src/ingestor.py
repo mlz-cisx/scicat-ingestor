@@ -226,12 +226,12 @@ class Ingestor:
             pid_cb=self.get_proposal_by_pid,
             instr_cb=self.get_instrument_by_pid,
         )
-        if not data_set.fields.proposalId:
+        if not data_set.proposalId:
             p = dataproposal.ProposalDataset()
-            p.fields.proposalId = data_set.ownerGroup
-            p.fields.email = "email@tum.com"
-            p.fields.title = "title"
-            p.fields.ownerGroup = "ingestor"
+            p.proposalId = data_set.ownerGroup
+            p.email = "email@tum.com"
+            p.title = "title"
+            p.ownerGroup = "ingestor"
 
             j = p._toJson()
             self.log.debug(pprint.pformat(j))
@@ -239,7 +239,7 @@ class Ingestor:
 
             self.log.debug(pprint.pformat(pr.text))
             propinfo = pr.json()
-            data_set.fields.proposalId = propinfo["id"]
+            data_set.proposalId = propinfo["id"]
 
         j = data_set._toJson()
 

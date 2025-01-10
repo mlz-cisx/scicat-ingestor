@@ -61,43 +61,43 @@ class MessageV1Alpha1(MessageParser):
         np10y = now + relativedelta(years=10)
 
         d = dataset.Dataset()
-        d.fields.id = msg["id"]
-        d.fields.datasetName = md[exp]["title"]["value"]
+        d.id = msg["id"]
+        d.datasetName = md[exp]["title"]["value"]
         if scaninfo:
-            d.fields.description = scaninfo[d.fields.id]
+            d.description = scaninfo[d.id]
         else:
 
-            d.fields.description = "not available"
-        # d.fields.datasetName = msg['metadata']['Exp']['title']
-        d.fields.creationLocation = "MLZ"
-        d.fields.owner = "ingestor"
-        d.fields.principalInvestigator = md[exp]["users"]["value"]
-        d.fields.contactEmail = "datasteward@frm2.tum.de"
-        d.fields.ownerEmail = "datasteward@frm2.tum.de"
+            d.description = "not available"
+        # d.datasetName = msg['metadata']['Exp']['title']
+        d.creationLocation = "MLZ"
+        d.owner = "ingestor"
+        d.principalInvestigator = md[exp]["users"]["value"]
+        d.contactEmail = "datasteward@frm2.tum.de"
+        d.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
-            d.fields.sourceFolder = fileinfo.get("basepath", "/")
+            d.sourceFolder = fileinfo.get("basepath", "/")
         else:
-            d.fields.sourceFolder = "/"
+            d.sourceFolder = "/"
 
-        d.fields.creationTime = now.isoformat()
-        d.fields.endTime = now.isoformat()
-        d.fields.type = "raw"
-        d.fields.ownerGroup = proposal
-        d.fields.proposalId = proposal
-        d.fields.accessGroups = ["mlz", "resi"]
-        d.fields.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
-        d.fields.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
-        d.fields.datasetlifecycle.dateOfPublishing = np3y.isoformat()
-        d.fields.isPublished = False
-        d.fields.ownerGroup = proposal or "scicat"
+        d.creationTime = now.isoformat()
+        d.endTime = now.isoformat()
+        d.type = "raw"
+        d.ownerGroup = proposal
+        d.proposalId = proposal
+        d.accessGroups = ["mlz", "resi"]
+        d.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
+        d.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
+        d.datasetlifecycle.dateOfPublishing = np3y.isoformat()
+        d.isPublished = False
+        d.ownerGroup = proposal or "scicat"
         proposaluid = pid_cb(proposal)
         self.log.debug("get_proposal: %r", proposaluid)
         if proposaluid is not None:
-            d.fields.proposalId = proposaluid["_id"]
+            d.proposalId = proposaluid["_id"]
 
         instrumentuid = instr_cb(instrument)
         if instrumentuid is not None:
-            d.fields.instrumentId = instrumentuid["id"]
+            d.instrumentId = instrumentuid["id"]
         # else:
         #    inst = dataInstrument.InstrumentDataset()
         #    inst.fields.instrumentId = instrument
@@ -159,6 +159,6 @@ class MessageV1Alpha1(MessageParser):
 
         sdm["runNumber"] = {"value": counterinfo.get("global", -1), "unit": ""}
 
-        d.fields.scientificMetadata = sdm
+        d.scientificMetadata = sdm
         self.log.debug(pprint.pformat(sdm))
         return d

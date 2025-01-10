@@ -2,7 +2,7 @@ from dataclasses import asdict, dataclass
 
 
 @dataclass
-class ProposalFields:
+class ProposalDataset:
     ownerGroup: str = ""
     proposalId: str = "prop"
     title: str = ""
@@ -10,10 +10,23 @@ class ProposalFields:
     # startTime: str = ""
     # endTime: str = ""
 
-
-class ProposalDataset:
-    def __init__(self):
-        self.fields = ProposalFields()
-
     def _toJson(self):
-        return asdict(self.fields)
+        return asdict(self)
+
+# why???
+# @dataclass
+# class ProposalFields:
+#     ownerGroup: str = ""
+#     proposalId: str = "prop"
+#     title: str = ""
+#     email: str = ""
+#     # startTime: str = ""
+#     # endTime: str = ""
+#
+#
+# class ProposalDataset:
+#     def __init__(self):
+#         self.fields = ProposalFields()
+#
+#     def _toJson(self):
+#         return asdict(self.fields)
