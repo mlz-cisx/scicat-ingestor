@@ -31,7 +31,7 @@ class AuthStrategy(StrEnum):
 class Ingestor:
     def __init__(self, url, *, auth_strategy=None):
         self.url = url
-        self.pid = None
+        self.previous_id = None
         self.log = logging.getLogger("Ingestor")
         self.log.level = logging.DEBUG
         self.consumer = None
@@ -276,7 +276,7 @@ class Ingestor:
         r = self.post("api/v3/Datasets", json=j)
 
         self.log.debug(pprint.pformat(r.text))
-        self.pid = r.json().get("pid")
+        self.previous_id = r.json().get("pid")
 
     def addDataBlock(self, flist):
         self.log.info(flist)
@@ -293,7 +293,7 @@ class Ingestor:
         j = asdict(b)
         # self.log.debug(j)
 
-        upid = requests.utils.quote(self.pid, safe="")
+        upid = requests.utils.quote(self.previous_id, safe="")
 
         res = self.post(f"api/v3/Datasets/{upid}/origdatablocks/", json=j)
         self.log.debug(pprint.pformat(res.text))
@@ -338,7 +338,7 @@ class Ingestor:
             f.write('\n')
         if (
             msg.get("version") == "v1alpha1"
-            and self.pid != msg.get("id", None)
+            and self.previous_id != msg.get("id", None)
             and (msg.get("event") == "scan.end"
                  or msg.get("type") == "scan.end")
         ):

@@ -18,6 +18,7 @@ class Lifecycle:
 
 @dataclass
 class Dataset:
+    pid: str = ""
     datasetName: str = ""
     principalInvestigator: str = ""
     endTime: str = ""

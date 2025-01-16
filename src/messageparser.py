@@ -61,7 +61,7 @@ class MessageV1Alpha1(MessageParser):
         np10y = now + relativedelta(years=10)
 
         d = dataset.Dataset()
-        d.id = msg["id"]
+        d.pid = msg["id"]
         d.datasetName = md[exp]["title"]["value"]
         if scaninfo:
             d.description = scaninfo[d.id]
