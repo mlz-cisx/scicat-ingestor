@@ -223,15 +223,42 @@ class Ingestor:
             self.log.exception("error get proposal")
             return None
 
+    def _search(self, endpoint, filter=None):
+        if filter:
+            return self.get(endpoint, params={"filter": json.dumps(filter)}).json()
+        else:
+            return self.get(endpoint).json()
+
+    def get_instruments(self):
+        return self._search("api/v3/instruments")
+
+    def instrument_by_unique_name(self, uname):
+        """
+            Parameters
+            ----------
+            uname: str
+            Unique name of the instrument.
+        """
+        instruments = self._search(
+            "api/v3/instruments",
+            filter={"where": {"uniqueName": uname}}
+        )
+        self.log.info("=================\n=>%s", instruments)
+        if not instruments:
+            return None
+        if len(instruments) > 1:
+            raise RuntimeError(f"Ambiguous uniqueName '{uname}'?!")
+        return instruments[0]
+
     def createDataset(self, msg):
         data_set = MessageV1Alpha1(self.log).parse_message(
             msg,
             pid_cb=self.get_proposal_by_pid,
-            instr_cb=self.get_instrument_by_pid,
+            instr_cb=self.instrument_by_unique_name,
         )
         if not data_set.proposalId:
             p = dataproposal.ProposalDataset()
-            p.proposalId = data_set.ownerGroup
+            p.proposalId = data_set.proposalId
             p.email = "email@tum.com"
             p.title = "title"
             p.ownerGroup = "ingestor"

@@ -95,7 +95,7 @@ class MessageV1Alpha1(MessageParser):
         if proposaluid is not None:
             d.proposalId = proposaluid["_id"]
 
-        instrumentuid = instr_cb(instrument)
+        instrumentuid = instr_cb(f"MLZ.{instrument}")  # TODO
         if instrumentuid is not None:
             d.instrumentId = instrumentuid["id"]
         # else:
