@@ -157,7 +157,7 @@ class MessageV1Alpha1(MessageParser):
                 elif isinstance(val, str):
                     sdm[f] = {"value": val, "unit": ""}
 
-        sdm["runNumber"] = {"value": counterinfo.get("global", -1), "unit": ""}
+        sdm["runNumber"] = {"value": counterinfo.get("counter", -1), "unit": ""}
 
         d.scientificMetadata = sdm
         self.log.debug(pprint.pformat(sdm))
