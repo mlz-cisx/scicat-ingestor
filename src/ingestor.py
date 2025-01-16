@@ -186,7 +186,10 @@ class Ingestor:
 
         if res.status_code >= 400:
             self.log.warning(res.text)
+            return None
 
+        if not res.text:  # Empty answer with status 200 indicates "not found"?
+            return None
         try:
             return res.json()
         except Exception:
@@ -213,7 +216,7 @@ class Ingestor:
 
         if res.status_code >= 400:
             self.log.warning(res.text)
-
+            return None
         try:
             return res.json()
         except Exception:
