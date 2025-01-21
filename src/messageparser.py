@@ -1,4 +1,5 @@
 import pprint
+import math
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from pathlib import Path
@@ -34,7 +35,6 @@ class MessageV1Alpha1(MessageParser):
         counterinfo = msg.get("counterinfo", {})
         scaninfo = msg.get("scaninfo", {})
         statistics = msg.get("statistics", {})
-        envdata = msg.get("envdata", {})
         instrument = mapping["instrument"].upper()
 
         # instrumentuid = self.get_instrument_by_pid(instrument)
@@ -115,50 +115,43 @@ class MessageV1Alpha1(MessageParser):
 
         # from statistics?
         sdm = {}
-        for f, data in envdata.items():
-            data["unit"] = data.get("unit", "").replace("A-1", "angstrom^-1")
-            if data.get("std") == 0:
-                sdm[f"{f}"] = {
-                    "value": data.get("avg", "-"),
-                    "unit": data.get("unit", ""),
+        for dev, stats in statistics.items():
+            unit = md.get(dev, {}).get("unit", "").replace("A-1", "angstrom^-1")
+            if stats.get("stddev") == 0.0 or math.isinf(stats.get("stddev") or 0):  # TODO
+                sdm[dev] = {
+                    "value": stats.get("mean", "-"),
+                    "unit": unit,
                 }
-            else:
-                sdm[f"{f}_avg"] = {
-                    "value": data.get("avg", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_stddev"] = {
-                    "value": data.get("std", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_min"] = {
-                    "value": data.get("min", "-"),
-                    "unit": data.get("unit", ""),
-                }
-                sdm[f"{f}_max"] = {
-                    "value": data.get("max", "-"),
-                    "unit": data.get("unit", ""),
-                }
-
-        for f, fv in md.items():
-
-            if f in envdata:
                 continue
-            val = fv.get("value")
-            if val:
+            for key in ("mean", "stddev", "min", "max"):
+                sdm[f"{dev}_{key}"] = {
+                    "value": stats.get(key, "-"),
+                    "unit": unit,
+                }
+
+        for dev, dev_params in md.items():
+            if dev in statistics:
+                continue
+            for param, parammd in dev_params.items():
+                if not parammd:
+                    continue
+                val = parammd.get("value")
+                if val is None:
+                    continue
+                unit = parammd.get("unit", "").replace("A-1", "angstrom^-1")
+                cat_name = f"{dev}_{param}" if param != "value" else dev
                 if isinstance(val, list):
-                    if "," in val[1]:
-                        sdm[f] = {"value": f"{val[0]} {val[1]}", "unit": ""}
+                    if len(val) > 1 and isinstance(val[1], str) and "," in val[1]:
+                        sdm[cat_name] = {"value": f"{val[0]} {val[1]}", "unit": unit}
                     elif isinstance(val[0], (int, float)):
-                        sdm[f] = {
-                            "value": val[0],
-                            "unit": val[1].replace("A-1", "angstrom^-1"),
-                        }
+                        sdm[cat_name] = {"value": val[0], "unit": unit}
                     else:
                         # handle mixed type devices that return a str for some settings
-                        sdm[f] = {"value": str(val[0]), "unit": ""}
+                        sdm[cat_name] = {"value": str(val[0]), "unit":  ''}
                 elif isinstance(val, str):
-                    sdm[f] = {"value": val, "unit": ""}
+                    sdm[cat_name] = {"value": val, "unit": ""}
+                else:
+                    sdm[cat_name] = {"value": val, "unit": unit}
 
         sdm["runNumber"] = {"value": counterinfo.get("counter", -1), "unit": ""}
 
