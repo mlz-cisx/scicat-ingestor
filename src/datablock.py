@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 class Datafile:
     path: str
     time: str
-    size: int = 0
+    size: int
+    uid: str
+    gid: str
+    perm: str
 
 
 @dataclass

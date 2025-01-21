@@ -1,6 +1,7 @@
 import pprint
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from pathlib import Path
 import dataset
 
 
@@ -28,7 +29,7 @@ class MessageV1Alpha1(MessageParser):
         md = msg["metadata"]
         mapping = msg["mapping"]
         exp = mapping["experiment"]
-        fileinfo = msg.get("fileinfo", {})
+        fileinfo = msg.get("fileinfos", [])
         proposal = md[exp]["proposal"]["value"]
         counterinfo = msg.get("counterinfo", {})
         scaninfo = msg.get("scaninfo", {})
@@ -75,7 +76,9 @@ class MessageV1Alpha1(MessageParser):
         d.contactEmail = "datasteward@frm2.tum.de"
         d.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
-            d.sourceFolder = fileinfo.get("basepath", "/")
+            dataroot = Path(fileinfo[0].get("dataroot", "/"))
+            samplepath = Path(fileinfo[0].get("samplepath", "/"))
+            d.sourceFolder = str("/PREFIX" / samplepath.relative_to(dataroot))
         else:
             d.sourceFolder = "/"
 

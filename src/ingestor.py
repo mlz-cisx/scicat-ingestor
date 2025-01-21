@@ -10,6 +10,7 @@ from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -282,16 +283,18 @@ class Ingestor:
         self.log.info(flist)
         b = datablock.OrigDatablock()
         totalsize = 0
-        for f in flist.get("filenames", []):
-            fi = datablock.Datafile(f, datetime.now().isoformat())
-            fi.size = int(flist["fileinfo"].get(f, {}).get("size", 0))
+        for file in flist:
+            stat = file["stat"]
+            fpath = str(Path(file["path"]).relative_to(Path(file["samplepath"])))
+            fi = datablock.Datafile(
+                fpath, time=stat["ctime"], size=stat["size"],
+                uid=str(stat["uid"]), gid=str(stat["gid"]), perm=str(stat["mode"]),  # TODO: octal?
+            )
             totalsize += fi.size
-
             b.dataFileList.append(fi)
 
         b.size = totalsize
         j = asdict(b)
-        # self.log.debug(j)
 
         upid = requests.utils.quote(self.previous_id, safe="")
 
@@ -343,7 +346,7 @@ class Ingestor:
                  or msg.get("type") == "scan.end")
         ):
             self.createDataset(msg)
-            fp = msg.get("fileinfo")
+            fp = msg.get("fileinfos")
             if fp:
                 self.addDataBlock(fp)
 
