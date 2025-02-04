@@ -36,7 +36,6 @@ class Dataset:
     validationStatus: str = ""
     keywords: list = field(default_factory=list)
     description: str = ""
-    datasetName: str = ""
     classification: str = "AV=medium,CO=low"
     license: str = "CC-BY-4.0"
     version: str = ""
