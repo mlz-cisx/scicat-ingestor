@@ -244,18 +244,29 @@ class Ingestor:
             "api/v3/instruments",
             filter={"where": {"uniqueName": uname}}
         )
-        self.log.info("=================\n=>%s", instruments)
         if not instruments:
             return None
         if len(instruments) > 1:
             raise RuntimeError(f"Ambiguous uniqueName '{uname}'?!")
         return instruments[0]
 
+    def get_sample_by_id(self, sampleId):
+        res = self.get(f"api/v3/samples/{sampleId}")
+        if res.status_code >= 400:
+            self.log.warning(res.text)
+            return None
+        try:
+            return res.json()
+        except Exception:
+            self.log.exception("error retrieving sample")
+            return None
+
     def createDataset(self, msg):
         data_set = MessageV1Alpha1(self.log).parse_message(
             msg,
             pid_cb=self.get_proposal_by_pid,
             instr_cb=self.instrument_by_unique_name,
+            prop_cb=self.postProposal,
         )
         if not data_set.proposalId:
             p = dataproposal.ProposalDataset()

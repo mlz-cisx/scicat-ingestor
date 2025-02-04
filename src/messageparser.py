@@ -30,6 +30,7 @@ class MessageV1Alpha1(MessageParser):
         md = msg["metadata"]
         mapping = msg["mapping"]
         exp = mapping["experiment"]
+        sample = mapping["sample"]
         fileinfo = msg.get("fileinfos", [])
         proposal = md[exp]["proposal"]["value"]
         counterinfo = msg.get("counterinfo", {})
@@ -112,6 +113,7 @@ class MessageV1Alpha1(MessageParser):
         #         'api/v3/instruments',
         #         json=j
         #    )
+        d.sampleId = str(md[sample]["sampleid"]["value"])
 
         # from statistics?
         sdm = {}
