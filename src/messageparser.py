@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from pathlib import Path
 import dataset
+import dataproposal
 
 
 class MessageParser:
@@ -12,12 +13,12 @@ class MessageParser:
     def __init__(self, log):
         self.log = log
 
-    def parse_message(self, message, pid_cb, instr_cb):
+    def parse_message(self, message, pid_cb, instr_cb, prop_cb):
         if message.get("version") == self.VERSION:
-            return self.make_dataset(message, pid_cb, instr_cb)
+            return self.make_dataset(message, pid_cb, instr_cb, prop_cb)
         # error on invalid?
 
-    def make_dataset(self, data, pid_cb, instr_cb):
+    def make_dataset(self, data, pid_cb, instr_cb, prop_cb):
         raise NotImplementedError
 
 
@@ -26,7 +27,7 @@ class MessageV1Alpha1(MessageParser):
 
     # these callbacks are not nice, do something more sensible
     # (still better than just in the ingestor)
-    def make_dataset(self, msg, pid_cb, instr_cb):
+    def make_dataset(self, msg, pid_cb, instr_cb, prop_cb):
         md = msg["metadata"]
         mapping = msg["mapping"]
         exp = mapping["experiment"]
@@ -37,26 +38,6 @@ class MessageV1Alpha1(MessageParser):
         scaninfo = msg.get("scaninfo", {})
         statistics = msg.get("statistics", {})
         instrument = mapping["instrument"].upper()
-
-        # instrumentuid = self.get_instrument_by_pid(instrument)
-
-        # self.log.debug("===== mapping =====")
-        # self.log.debug(pprint.pformat(mapping))
-        # self.log.debug("===== metadata =====")
-        # self.log.debug(pprint.pformat(md))
-        # self.log.debug("===== fileinfo =====")
-        # self.log.debug(pprint.pformat(fileinfo))
-        # self.log.debug("===== proposal =====")
-        # self.log.debug(pprint.pformat(proposal))
-        # self.log.debug("===== counterinfo =====")
-        # self.log.debug(pprint.pformat(counterinfo))
-        # self.log.debug("===== scaninfo =====")
-        # self.log.debug(pprint.pformat(scaninfo))
-        # self.log.debug("===== statistics =====")
-        # self.log.debug(pprint.pformat(statistics))
-        # self.log.debug("===== envdata =====")
-        # self.log.debug(pprint.pformat(envdata))
-        # self.log.debug(pprint.pformat(instrument))
 
         now = datetime.now()
         np3y = now + relativedelta(years=3)
@@ -79,40 +60,41 @@ class MessageV1Alpha1(MessageParser):
         if fileinfo:
             dataroot = Path(fileinfo[0].get("dataroot", "/"))
             samplepath = Path(fileinfo[0].get("samplepath", "/"))
-            d.sourceFolder = str("/PREFIX" / samplepath.relative_to(dataroot))
+            d.sourceFolder = str("/nfs" / samplepath.relative_to(dataroot))
         else:
             d.sourceFolder = "/"
 
         d.creationTime = now.isoformat()
         d.endTime = now.isoformat()
         d.type = "raw"
-        d.ownerGroup = proposal
+        d.ownerGroup = "rabbitmq"
         d.proposalId = proposal
-        d.accessGroups = ["mlz", "resi"]
+        d.accessGroups = ["E00001-01A", proposal, instrument.lower()]
         d.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
         d.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
         d.datasetlifecycle.dateOfPublishing = np3y.isoformat()
         d.isPublished = False
-        d.ownerGroup = proposal or "scicat"
+        # d.ownerGroup = proposal or "scicat"
         proposaluid = pid_cb(proposal)
         self.log.debug("get_proposal: %r", proposaluid)
         if proposaluid is not None:
             d.proposalId = proposaluid["_id"]
+        else:
+            p = dataproposal.ProposalDataset()
+            p.proposalId = proposal
+            p.email = "email@tum.com"
+            p.title = "Cookies"
+            p.ownerGroup = proposal
+            p.accessGroups = "rabbitmq"
 
+            j = p._toJson()
+            self.log.debug(pprint.pformat(j))
+            d.proposalId = prop_cb("api/v3/proposals", json=j).json()["id"]
+
+        print(f"===> {instrument}")
         instrumentuid = instr_cb(f"MLZ.{instrument}")  # TODO
         if instrumentuid is not None:
             d.instrumentId = instrumentuid["id"]
-        # else:
-        #    inst = dataInstrument.InstrumentDataset()
-        #    inst.fields.instrumentId = instrument
-        #    inst.fields.name = "InstName"
-
-        #    j = inst._toJson()
-        #    self.log.debug(pprint.pformat(j))
-        #    r = self.postInstrument(
-        #         'api/v3/instruments',
-        #         json=j
-        #    )
         d.sampleId = str(md[sample]["sampleid"]["value"])
 
         # from statistics?
