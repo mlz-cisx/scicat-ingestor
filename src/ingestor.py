@@ -21,7 +21,7 @@ import datablock
 import dataproposal
 from messageparser import MessageV1Alpha1
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class AuthStrategy(StrEnum):
