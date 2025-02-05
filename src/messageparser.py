@@ -45,7 +45,7 @@ class MessageV1Alpha1(MessageParser):
 
         d = dataset.Dataset()
         d.pid = msg["id"]
-        d.datasetName = md[exp]["title"]["value"]
+        d.datasetName = msg["name"] or "Scan " + str(counterinfo.get("counter", -1))
         if scaninfo:
             d.description = scaninfo[d.id]
         else:
