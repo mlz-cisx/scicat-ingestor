@@ -267,6 +267,7 @@ class Ingestor:
             pid_cb=self.get_proposal_by_pid,
             instr_cb=self.instrument_by_unique_name,
             prop_cb=self.postProposal,
+            sample_cb=self.get_sample_by_id
         )
         if not data_set.proposalId:
             p = dataproposal.ProposalDataset()

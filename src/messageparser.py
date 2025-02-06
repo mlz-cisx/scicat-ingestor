@@ -13,12 +13,12 @@ class MessageParser:
     def __init__(self, log):
         self.log = log
 
-    def parse_message(self, message, pid_cb, instr_cb, prop_cb):
+    def parse_message(self, message, pid_cb, instr_cb, prop_cb, sample_cb):
         if message.get("version") == self.VERSION:
-            return self.make_dataset(message, pid_cb, instr_cb, prop_cb)
+            return self.make_dataset(message, pid_cb, instr_cb, prop_cb, sample_cb)
         # error on invalid?
 
-    def make_dataset(self, data, pid_cb, instr_cb, prop_cb):
+    def make_dataset(self, data, pid_cb, instr_cb, prop_cb, sample_cb):
         raise NotImplementedError
 
 
@@ -27,7 +27,7 @@ class MessageV1Alpha1(MessageParser):
 
     # these callbacks are not nice, do something more sensible
     # (still better than just in the ingestor)
-    def make_dataset(self, msg, pid_cb, instr_cb, prop_cb):
+    def make_dataset(self, msg, pid_cb, instr_cb, prop_cb, sample_cb):
         md = msg["metadata"]
         mapping = msg["mapping"]
         exp = mapping["experiment"]
@@ -95,8 +95,10 @@ class MessageV1Alpha1(MessageParser):
         instrumentuid = instr_cb(f"MLZ.{instrument}")  # TODO
         if instrumentuid is not None:
             d.instrumentId = instrumentuid["id"]
-        d.sampleId = str(md[sample]["sampleid"]["value"])
+        sid = str(md[sample]["sampleid"]["value"])
+        sample_id = sample_cb(sid)
 
+        d.sampleId = sample_id
         # from statistics?
         sdm = {}
         for dev, stats in statistics.items():
