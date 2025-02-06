@@ -127,16 +127,18 @@ class MessageV1Alpha1(MessageParser):
         # from statistics?
         sdm = {}
         for dev, stats in statistics.items():
-            unit = md.get(dev, {}).get("unit", "").replace("A-1", "angstrom^-1")
-            if stats.get("stddev") == 0.0 or math.isinf(stats.get("stddev") or 0):  # TODO
-                sdm[dev] = {
-                    "value": stats.get("mean", "-"),
-                    "unit": unit,
-                }
-                continue
+            unit = md.get(dev, {}).get("value", {}).get("unit", "").replace(
+                "A-1", "angstrom^-1")#.replace("K", "kelvin")
+            if stats.get("stddev") == 0.0 or math.isinf(stats.get("stddev")):  # TODO
+                stats["stddev"] = 0
+            #     sdm[dev] = {
+            #         "value": stats.get("mean", "-"),
+            #         "unit": unit,
+            #     }
+            #     # continue
             for key in ("mean", "stddev", "min", "max"):
                 sdm[f"{dev}_{key}"] = {
-                    "value": stats.get(key, "-"),
+                    "value": stats.get(key, None),
                     "unit": unit,
                 }
 
@@ -163,6 +165,8 @@ class MessageV1Alpha1(MessageParser):
                     sdm[cat_name] = {"value": val, "unit": ""}
                 else:
                     sdm[cat_name] = {"value": val, "unit": unit}
+                print(f">>> {cat_name} = v: {val} u: {unit} sdm:"
+                      f" {sdm[cat_name]}")
 
         sdm["runNumber"] = {"value": counterinfo.get("counter", -1), "unit": ""}
 
