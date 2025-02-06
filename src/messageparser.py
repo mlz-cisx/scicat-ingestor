@@ -83,7 +83,7 @@ class MessageV1Alpha1(MessageParser):
             p = dataproposal.ProposalDataset()
             p.proposalId = proposal
             p.email = "email@tum.com"
-            p.title = "Cookies"
+            p.title = md[exp]["title"]["value"]
             p.ownerGroup = proposal
             p.accessGroups = "rabbitmq"
 
