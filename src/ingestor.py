@@ -256,7 +256,7 @@ class Ingestor:
             self.log.warning(res.text)
             return None
         try:
-            return res.json()
+            return res.json()["id"]
         except Exception:
             self.log.exception("error retrieving sample")
             return None

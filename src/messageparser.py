@@ -37,7 +37,12 @@ class MessageV1Alpha1(MessageParser):
         counterinfo = msg.get("counterinfo", {})
         scaninfo = msg.get("scaninfo", {})
         statistics = msg.get("statistics", {})
-        instrument = mapping["instrument"].upper()
+        instrument = mapping["instrument"]
+
+        # TODO: currently constant settings
+        owner = "ingestor"
+        ownerGroup = "rabbitmq"
+        accessGroups = ["E00001-01A", proposal, instrument]
 
         now = datetime.now()
         np3y = now + relativedelta(years=3)
@@ -53,7 +58,7 @@ class MessageV1Alpha1(MessageParser):
             d.description = "not available"
         # d.datasetName = msg['metadata']['Exp']['title']
         d.creationLocation = "MLZ"
-        d.owner = "ingestor"
+        d.owner = owner
         d.principalInvestigator = md[exp]["users"]["value"]
         d.contactEmail = "datasteward@frm2.tum.de"
         d.ownerEmail = "datasteward@frm2.tum.de"
@@ -67,9 +72,9 @@ class MessageV1Alpha1(MessageParser):
         d.creationTime = now.isoformat()
         d.endTime = now.isoformat()
         d.type = "raw"
-        d.ownerGroup = "rabbitmq"
+        d.ownerGroup = ownerGroup
         d.proposalId = proposal
-        d.accessGroups = ["E00001-01A", proposal, instrument.lower()]
+        d.accessGroups = accessGroups
         d.datasetlifecycle.dateOfDiskPurging = np10y.isoformat()
         d.datasetlifecycle.archiveRetentionTime = np10y.isoformat()
         d.datasetlifecycle.dateOfPublishing = np3y.isoformat()
@@ -92,11 +97,25 @@ class MessageV1Alpha1(MessageParser):
             d.proposalId = prop_cb("api/v3/proposals", json=j).json()["id"]
 
         print(f"===> {instrument}")
-        instrumentuid = instr_cb(f"MLZ.{instrument}")  # TODO
+        instrumentname = md[instrument]["instrument"]["value"].upper()
+        instrumentuid = instr_cb(f"MLZ.{instrumentname}")  # TODO
         if instrumentuid is not None:
             d.instrumentId = instrumentuid["id"]
         sid = str(md[sample]["sampleid"]["value"])
         sample_id = sample_cb(sid)
+        if not sample_id:
+            # TODO: instrumentGroup, sampleCharacteristics
+            sampleobj = {
+                "ownerGroup": ownerGroup,
+                "accessGroups": accessGroups,
+                "sampleId": sid,
+                "owner": owner,
+                "description": md[sample]["samplename"]["value"],
+                "sampleCharacteristics": {},
+                "isPublished": False,
+            }
+            # TODO: currently misuse prob_cb for post request
+            sample_id = prop_cb("api/v3/samples", json=sampleobj).json()["id"]
 
         d.sampleId = sample_id
         # from statistics?
