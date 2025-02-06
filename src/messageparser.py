@@ -34,16 +34,18 @@ class MessageV1Alpha1(MessageParser):
         exp = mapping["experiment"]
         sample = mapping["sample"]
         fileinfo = msg.get("fileinfos", [])
-        proposal = md[exp]["proposal"]["value"]
+        pinfo = msg["propinfo"]
+        # TODO: sampletracker info in NICOS, multiple samples w/ ID
+        proposal = pinfo["proposal"]
         counterinfo = msg.get("counterinfo", {})
         scaninfo = msg.get("scaninfo", {})
         statistics = msg.get("statistics", {})
-        instrument = mapping["instrument"]
+        instrument = pinfo["instrument"]
 
         # TODO: currently constant settings
         owner = "ingestor"
         ownerGroup = "rabbitmq"
-        accessGroups = ["E00001-01A", proposal, instrument]
+        accessGroups = [pinfo["session"], proposal, instrument]
 
         now = datetime.now()
         np3y = now + relativedelta(years=3)
@@ -55,12 +57,11 @@ class MessageV1Alpha1(MessageParser):
         if scaninfo:
             d.description = scaninfo[d.id]
         else:
-
             d.description = "not available"
-        # d.datasetName = msg['metadata']['Exp']['title']
         d.creationLocation = "MLZ"
         d.owner = owner
-        d.principalInvestigator = md[exp]["users"]["value"]
+        d.principalInvestigator = pinfo["users"][0]["name"]
+        # TODO: datasteward or PI email?
         d.contactEmail = "datasteward@frm2.tum.de"
         d.ownerEmail = "datasteward@frm2.tum.de"
         if fileinfo:
@@ -88,7 +89,8 @@ class MessageV1Alpha1(MessageParser):
         else:
             p = dataproposal.ProposalDataset()
             p.proposalId = proposal
-            p.email = "email@tum.com"
+            # TODO: PI vs. Main Proposer (frontend)?
+            p.email = pinfo["mainproposer"]["email"]
             p.title = md[exp]["title"]["value"]
             p.ownerGroup = proposal
             p.accessGroups = "rabbitmq"
@@ -102,9 +104,7 @@ class MessageV1Alpha1(MessageParser):
             self.log.debug(pprint.pformat(j))
             d.proposalId = prop_cb("api/v3/proposals", json=j).json()["id"]
 
-        print(f"===> {instrument}")
-        instrumentname = md[instrument]["instrument"]["value"].upper()
-        instrumentuid = instr_cb(f"MLZ.{instrumentname}")  # TODO
+        instrumentuid = instr_cb(f"MLZ.{instrument}")  # TODO
         if instrumentuid is not None:
             d.instrumentId = instrumentuid["id"]
         sid = str(md[sample]["sampleid"]["value"])
