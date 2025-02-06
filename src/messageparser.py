@@ -1,5 +1,6 @@
 import pprint
 import math
+import textwrap
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from pathlib import Path
@@ -91,6 +92,11 @@ class MessageV1Alpha1(MessageParser):
             p.title = md[exp]["title"]["value"]
             p.ownerGroup = proposal
             p.accessGroups = "rabbitmq"
+            p.abstract = textwrap.dedent("""
+            Lorem ipsum odor amet, consectetuer adipiscing elit. Primis consequat taciti tincidunt urna blandit tincidunt facilisi mattis. Mus taciti est; pretium lectus fermentum risus. Rutrum aliquet diam habitant ante diam maecenas diam mus. At eget cursus aliquet tincidunt quam libero duis. Pulvinar dui primis donec rutrum aliquam. Porttitor tincidunt accumsan conubia eleifend urna laoreet.
+
+            Potenti ante potenti diam scelerisque bibendum mi euismod. Faucibus purus ipsum porta auctor mattis congue integer. Tincidunt a mus sit quam diam dignissim urna in. Lacinia ultrices placerat sit erat lacus. Bibendum accumsan pharetra himenaeos condimentum ut iaculis. Potenti rhoncus morbi platea adipiscing morbi tortor nunc finibus. Maecenas tincidunt fames parturient ut, platea fusce tincidunt. Amet sit conubia vel fusce ipsum varius sagittis. Quis ac volutpat vitae litora senectus finibus maximus euismod.
+            """)
 
             j = p._toJson()
             self.log.debug(pprint.pformat(j))

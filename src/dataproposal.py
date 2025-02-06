@@ -7,6 +7,7 @@ class ProposalDataset:
     proposalId: str = "prop"
     title: str = ""
     email: str = ""
+    abstract: str = ""
     # startTime: str = ""
     # endTime: str = ""
 
