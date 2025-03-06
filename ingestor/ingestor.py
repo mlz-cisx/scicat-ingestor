@@ -1,10 +1,12 @@
 import asyncio
+from datetime import datetime
+from pathlib import Path
 
 import mlzlog
 import rstream
 
-from .client import SciCatClient
-from .message import Message, testmsg, parse_message
+from .client import PostDataset, PostOrigDataBlock, PostProposal, SciCatClient, DataFile, export
+from .message import Event, Message, parse_message, testmsg
 
 
 class Ingestor:
@@ -15,9 +17,54 @@ class Ingestor:
         self.consumer = None
 
     async def on_message(self, msg_raw, message_context):
-        await self.client.login(self.client.config.user, self.client.config.pw)  # TODO in client
+        msg: Message = parse_message(msg_raw, self.log)
+        if msg.event == Event.SCAN or msg.event == Event.ENDSCAN:
+            scanid = msg.id
+        else:
+            scanid = msg.scanid
+
+        dataset = PostDataset(
+            type="raw",
+            owner="ingestor",
+            ownerGroup=msg.propinfo.session,
+            accessGroups=[msg.propinfo.session, msg.propinfo.instrument],
+            sourceFolder="/",  # TODO: sometimes there is no file yet, and we can't know
+            contactEmail="a@b.com",
+            creationLocation="",
+            principalInvestigator="",
+            datasetName=msg.name,
+            creationTime=datetime.now().isoformat(),
+            pid=scanid,
+            isPublished=True,
+        )
+        proposal = PostProposal(
+            ownerGroup=msg.propinfo.session,
+            proposalId="",
+            email="",
+            title="",
+        )
+
+        files = []
+        for fileinfo in msg.fileinfos:
+            path = Path(fileinfo.path)
+            samplepath = Path(fileinfo.samplepath)
+            path = str(path.relative_to(samplepath))
+            files.append(DataFile(
+                path=path,
+                size=fileinfo.size,
+                time=fileinfo.ctime,
+                chk=None,  # TODO
+                uid=fileinfo.uid,
+                gid=fileinfo.gid,
+                perm=fileinfo.mode,
+            ))
+
+        proposal_id = await self.client.search_or_upload(proposal)
+        #await self.client.post("api/v3/datasets", json=export(dataset))
+        print(export(dataset))
 
     async def run(self):
+        await self.client.login(self.client.config.user, self.client.config.pw)  # TODO in client
         for msg in testmsg():
             await self.on_message(msg, None)
         try:

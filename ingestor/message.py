@@ -77,8 +77,8 @@ class Message:
 
         self.version = content["version"]
         self.id = content["id"]
-        self.blockid = content["blockid"]
-        self.scanid = content["scanid"]
+        self.blockid = content["blockid"] if content["blockid"] != "None" else None
+        self.scanid = content["scanid"] if content["scanid"] != "None" else None
         self.name = content["name"]
         self.event = Event(content["event"])
         self.creation_timestamp = content["creation_timestamp"]

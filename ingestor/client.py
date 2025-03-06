@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import StrEnum
 
 import aiohttp
@@ -20,6 +20,7 @@ class SciCatClient:
         self.session = aiohttp.ClientSession()
         # config
         self.config = config
+        self.expires = None
 
     async def login(self, user, password):
         async with self.session.post(
@@ -30,6 +31,11 @@ class SciCatClient:
                 body = await response.json()
                 if (token := body.get('access_token')) is not None:
                     self.session.headers["Authorization"] = f"Bearer {token}"
+                # TODO: manage lifetime of token etc
+                # self.expires
+                # body.get('created')
+                # body.get('expires_in')
+                # body.get('ttl')
 
     async def get(self, path, **kwds):
         async with self.session.get(
@@ -38,8 +44,8 @@ class SciCatClient:
         ) as response:
             if 200 <= response.status < 300:
                 return await response.json()
-            if response.status > 400:
-                self.log.error("Error in get request: %r", response.text)
+            if response.status >= 400:
+                self.log.error("Error in get request: %r", await response.text)
 
     async def post(self, path, **kwds):
         async with self.session.post(
@@ -48,8 +54,8 @@ class SciCatClient:
         ) as response:
             if 200 <= response.status < 300:
                 return await response.json()
-            if response.status > 400:
-                self.log.error("Error in post request: %r", response.text)
+            if response.status >= 400:
+                self.log.error("Error in post request: %r", await response.text)
 
     async def close(self):
         await self.session.close()
@@ -89,9 +95,10 @@ class PostDataset:
     datasetName: str
     creationTime: str
     pid: str  # original schema has this as optional, but we always want it
+    owner: str
+    creationLocation: str  # schema says optional, internal error says no
     accessGroups: list[str] | None = None
     instrumentGroup: str | None = None
-    owner: str | None = None
     ownerEmail: str | None = None
     orcidOfOwner: str | None = None
     sourceFolderHost: str | None = None
@@ -112,10 +119,9 @@ class PostDataset:
     scientificMetadata: dict | None = None
     comment: str | None = None
     dataQualityMetrics: int | None = None
-    principalInvestigators: list[str] | None = None
+    principalInvestigator: str | None = None
     startTime: str | None = None
     endTime: str | None = None
-    creationLocation: str | None = None
     dataFormat: str | None = None
     proposalIds: list[str] | None = None
     sampleIds: list[str] | None = None
@@ -166,7 +172,7 @@ class Dataset:
     scientificMetadata: dict | None = None
     comment: str | None = None
     dataQualityMetrics: int | None = None
-    principalInvestigators: list[str] | None = None
+    principalInvestigator: str | None = None
     startTime: str | None = None
     endTime: str | None = None
     dataFormat: str | None = None
