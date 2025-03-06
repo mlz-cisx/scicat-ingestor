@@ -9,8 +9,8 @@ import mlzlog
 from dotenv import load_dotenv
 
 from .client import AuthStrategy
-from .ingestor import Ingestor
-from .message import testmsg
+from .ingestor import Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
+from .consumer import RabbitConsumer
 
 
 @dataclass
@@ -84,9 +84,10 @@ async def main():
     loop.add_signal_handler(signal.SIGINT, stop_everything, "SIGINT")
     loop.add_signal_handler(signal.SIGTERM, stop_everything, "SIGTERM")
 
-    i = Ingestor(cfg, mlzlog.getLogger("ingestor"))
+    ingestor = Ingestor(cfg.sc, mlzlog.getLogger("ingestor"))
+    consumer = RabbitConsumer(cfg.rmq, ingestor, mlzlog.getLogger("consumer"))
     try:
-        await i.run()
+        await consumer.run()
     except asyncio.CancelledError:
         mlzlog.log.info("stopped")
 
