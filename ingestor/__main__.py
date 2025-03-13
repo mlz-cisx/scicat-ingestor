@@ -9,8 +9,14 @@ import mlzlog
 from dotenv import load_dotenv
 
 from .client import AuthStrategy
-from .ingestor import Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
 from .consumer import RabbitConsumer
+from .ingestor import \
+    Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
+
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
+
 
 
 @dataclass
@@ -42,8 +48,8 @@ def get_config():
     sc_url = os.environ.get('SCICAT_URL')
     if not sc_url:
         raise ValueError('No SciCat url configured')
-    if not sc_url.endswith("/"):
-        sc_url += "/"
+    if sc_url.endswith("/"):
+        sc_url = sc_url.rstrip("/")
     try:
         auth_strategy = AuthStrategy(os.environ.get("SCICAT_AUTH_STRATEGY", "login"))
     except ValueError as e:
@@ -93,5 +99,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    mlzlog.initLogging("ingest", logdir=None)  # only to console
+    mlzlog.initLogging("ingest", rootlevel='debug', logdir=None)  # only to console
     asyncio.run(main())

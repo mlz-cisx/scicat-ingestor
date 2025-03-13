@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export SCICAT_URL="https://scicat.dev.ocp.jcns.frm2.tum.de/"
+export SCICAT_URL="https://scicat.dev.ocp.jcns.frm2.tum.de"
 export SCICAT_AUTH_STRATEGY="ldap"
 export SCICAT_USER="workbench"
 export SCICAT_PASSWORD="w0rkb3nc4"
@@ -13,4 +13,5 @@ export RMQ_STREAM="ingestor-test"
 
 #read -s -p "Scicat Password:" SCICAT_PASSWORD
 echo
-python src/ingestor.py
+# python src/ingestor.py
+python -m ingestor

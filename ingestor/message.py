@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-import mlzlog
-
 
 class Event(StrEnum):
     POINT = 'point'
@@ -34,6 +32,10 @@ class File:
     gid: int
     inode: int
 
+@dataclass(frozen=True)
+class Sample:
+    name: str
+    id: str
 
 @dataclass(frozen=True)
 class User:
@@ -73,26 +75,20 @@ Stats = namedtuple('Stats', ['mean', 'stddev', 'min', 'max'])
 
 class Message:
     def __init__(self, content, log):
-        # TODO: more fault tolerant, check version
+        # TODO: more fault tolerant, check version, eval mapping
 
         self.version = content["version"]
         self.id = content["id"]
         self.blockid = content["blockid"] if content["blockid"] != "None" else None
         self.scanid = content["scanid"] if content["scanid"] != "None" else None
-        self.name = content["name"]
+        self.name = content["name"] or ""
         self.event = Event(content["event"])
         self.creation_timestamp = content["creation_timestamp"]
         files = []
         for file in content["fileinfos"]:
             files.append(File(**file["stat"], **{k: file[k] for k in file if k != "stat"}))
         self.fileinfos = files
-        mainproposer = User(
-            name=content["propinfo"]["mainproposer"]["name"],
-            email=content["propinfo"]["mainproposer"]["email"],
-            affiliation=content["propinfo"]["mainproposer"].get("affilation"),
-        )
-        if "affiliation" in content["propinfo"]["mainproposer"]:
-            raise ValueError("affilation fixed, remove workaround")
+        mainproposer = User(**content["propinfo"]["mainproposer"])
         self.propinfo = Proposal(
             title=content["propinfo"]["title"],
             proposal=content["propinfo"]["proposal"],
@@ -116,6 +112,12 @@ class Message:
         self.counterinfo = Counters(**content["counterinfo"])
         self.canonicalvalues = content["canonicalvalues"]
 
+        samplemapped = content["metadata"][content["mapping"]["sample"]]
+        self.sample = Sample(
+            name=samplemapped["samplename"]["value"],
+            id=samplemapped["sampleid"]["value"],
+        )
+
 
 MESSAGES = {
     "v1alpha1": Message,
@@ -138,3 +140,16 @@ def parse_message(raw, log):
                   msg_version, ', '.join(MESSAGES.keys()))
         return None
     return msg_class(content, log)
+
+
+# TODO remove later
+def testmsg():
+    with open(Path(__file__).parent / "../sans-v2-subscan.json", "rb") as f:
+        msgs = f.read()
+
+    out = []
+    for msg in msgs.split(b"\n"):
+        if not msg:
+            continue
+        out.append(msg)
+    return out
