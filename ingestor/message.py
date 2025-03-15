@@ -32,10 +32,12 @@ class File:
     gid: int
     inode: int
 
+
 @dataclass(frozen=True)
 class Sample:
     name: str
     id: str
+
 
 @dataclass(frozen=True)
 class User:
@@ -117,6 +119,7 @@ class Message:
             name=samplemapped["samplename"]["value"],
             id=samplemapped["sampleid"]["value"],
         )
+        self.instrument = content["metadata"][content["mapping"]["instrument"]]["instrument"]["value"]
 
 
 MESSAGES = {

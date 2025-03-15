@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 import math
 from pathlib import Path
@@ -17,18 +16,24 @@ class Ingestor(Backend):
         self.client = SciCatClient(cfg, mlzlog.getLogger("client"))
 
     async def on_message(self, msg_raw, message_context):
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._on_message, msg_raw, message_context)
+        try:
+            await self._on_message(msg_raw, message_context)
+        except Exception as e:
+            self.log.error("Uncaught error in on_message: %r", e)
 
-    def _on_message(self, msg_raw, message_context):
-        self.client.login(self.client.config.user, self.client.config.pw)  # TODO in client
+    async def _on_message(self, msg_raw, message_context):
         msg: Message = parse_message(msg_raw, self.log)
         # TODO: change msg w/ hierarchy
+
+        dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
+        self._calc_checksums(files)
+        await self._upload(dataset, datablock, proposal, files, sample)
+
+    def objects_from_message(self, msg):
         if msg.event == Event.SCAN or msg.event == Event.ENDSCAN:
             scanid = msg.id
         else:
             scanid = msg.scanid
-
         dataset = CreateDatasetDto(
             type="raw",
             owner="ingestor",
@@ -38,15 +43,15 @@ class Ingestor(Backend):
             contactEmail="datasteward@mlz-garching.de",  # TODO
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=msg.propinfo.mainproposer.name,
-            datasetName=msg.name,
+            datasetName=msg.name or "Scan",
             creationTime=datetime.now().isoformat(),
             pid=scanid,
             isPublished=True,
             description="not available",
             scientificMetadata=self.get_scientific_metadata(msg),
             runNumber=str(0),
-            sample_id=str(msg.sample.id),
-            instrumentId="",
+            sampleId=str(msg.sample.id),
+            instrumentId=msg.instrument,
         )
         proposal = CreateProposalDto(
             ownerGroup=msg.propinfo.session,
@@ -57,7 +62,7 @@ class Ingestor(Backend):
         )
 
         sample = CreateSampleDto(
-            sample_id=str(msg.sample.id),
+            sampleId=str(msg.sample.id),
             owner="",
             ownerGroup="",
             accessGroups=[],
@@ -91,9 +96,7 @@ class Ingestor(Backend):
             dataFileList=files,
             size=totalsize,
         )
-
-        self._calc_checksums(files)
-        self._upload(dataset, datablock, proposal, files, sample)
+        return dataset, datablock, proposal, files, sample
 
     def get_scientific_metadata(self, msg):
         smd = {}
@@ -138,32 +141,28 @@ class Ingestor(Backend):
     def _map_unit(self, unit):
         return unit.replace("A-1", "angstrom^-1") #.replace("K", "kelvin")
 
-    def _upload(self, dataset, datablock, proposal, files, sample):
+    async def _upload(self, dataset, datablock, proposal, files, sample):
         # create proposal if not present
-        prop_from_scicat = self.client.get_or_create_proposal(proposal)
-        dataset.proposalId = str(prop_from_scicat)
+        prop_from_scicat = await self.client.get_or_create_proposal(proposal)
+        dataset.proposalIds = [str(prop_from_scicat.proposalId)]
         # ensure sample exists
-        if self.client.get_sample_by_id(sample.sample_id) is None:
-            self.client.create_sample(sample)
+        if await self.client.get_sample_by_id(sample.sampleId) is None:
+            await self.client.create_sample(sample)
 
         # create dataset if not present
-        if self.client.get_dataset_by_pid(dataset.pid) is None:
-            self.client.create_dataset(dataset)
+        if await self.client.get_dataset_by_pid(dataset.pid) is None:
+            await self.client.create_dataset(dataset)
         #
-        datablocks = self.client.get_origdatablocks_for_dataset(dataset.pid)
+        datablocks = await self.client.get_origdatablocks_for_dataset(dataset.pid)
         if not datablocks:
-            datablock_scicat = self.client.create_origdatablock(datablock)
+            datablock_scicat = await self.client.create_origdatablock(datablock)
         else:
             datablock_scicat = datablocks[-1]
-        datablock_scicat.pid
+        # datablock_scicat.pid
         # patch with new files
 
     def _calc_checksums(self, files):
         pass
 
     async def close(self):
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._close)
-
-    def _close(self):
-        self.client.close()
+        await self.client.close()

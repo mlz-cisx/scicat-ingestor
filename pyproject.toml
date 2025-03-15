@@ -20,7 +20,8 @@ dependencies = [
    "dateutils",
    "rstream>=0.20.5",
    "python-dotenv",
-   "scicat-sdk-py",
+   "aiohttp",
+   "dacite",
   ]
 dynamic = [
     "version",

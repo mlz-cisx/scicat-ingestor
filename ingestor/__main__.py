@@ -17,8 +17,6 @@ from .ingestor import \
 #logging.basicConfig(level=logging.DEBUG)
 
 
-
-
 @dataclass
 class RabbitMQConfig:
     host: str
@@ -48,8 +46,7 @@ def get_config():
     sc_url = os.environ.get('SCICAT_URL')
     if not sc_url:
         raise ValueError('No SciCat url configured')
-    if sc_url.endswith("/"):
-        sc_url = sc_url.rstrip("/")
+    sc_url = sc_url.rstrip("/")
     try:
         auth_strategy = AuthStrategy(os.environ.get("SCICAT_AUTH_STRATEGY", "login"))
     except ValueError as e:
