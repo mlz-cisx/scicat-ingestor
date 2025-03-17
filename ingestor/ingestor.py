@@ -60,7 +60,7 @@ class Ingestor(Backend):
             ownerGroup=msg.propinfo.session,
             accessGroups=[msg.propinfo.instrument],
             proposalId=msg.propinfo.proposal,
-            email="",
+            email=msg.propinfo.mainproposer.email,
             title=msg.propinfo.title,
         )
 
