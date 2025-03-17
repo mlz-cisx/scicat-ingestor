@@ -149,11 +149,11 @@ class Ingestor(Backend):
         prop_from_scicat = await self.client.get_or_create_proposal(proposal)
         dataset.proposalIds = [str(prop_from_scicat.proposalId)]
         # ensure sample exists
-        if await self.client.get_sample_by_id(sample.sampleId) is None:
+        if await self.client.get_sample_by_id(sample.sampleId, not_found_ok=True) is None:
             self.log.info("Creating sample %s in SciCat", sample.sampleId)
             await self.client.create_sample(sample)
         # create dataset if not present
-        if await self.client.get_dataset_by_pid(dataset.pid) is None:
+        if await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True) is None:
             await self._create_new_dataset(dataset, datablock)
         else:
             # modify existing

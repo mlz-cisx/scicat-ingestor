@@ -40,7 +40,7 @@ class SciCatClient:
         self.config = config
         self.expires = datetime.now()
 
-    async def _get_endpoint(self, endpoint, response_type, *args, multiple=False, **kwargs):
+    async def _get_endpoint(self, endpoint, response_type, *args, multiple=False, not_found_ok=False, **kwargs):
         self.log.debug('GET %s expecting %s (multiple=%s)',
                        endpoint, response_type.__name__, multiple)
         async with self.session.get(
@@ -52,7 +52,10 @@ class SciCatClient:
                 except TypeError as e:
                     self.log.error("Error in get request to %s: %r with %s", endpoint, e, await response.json())
             if response.status >= 400:
+                if not_found_ok and response.status == 404:
+                    return None
                 self.log.error("Error in get request to %s: %r", endpoint, await response.text())
+        return None
 
     async def _post_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
         self.log.debug('POST %s with %s expecting %s',
@@ -64,6 +67,7 @@ class SciCatClient:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
                 self.log.error("Error in post request to %s: %r", endpoint, await response.text())
+        return None
 
     async def _patch_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
         self.log.debug('PATCH %s with %s expecting %s',
@@ -75,6 +79,7 @@ class SciCatClient:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
                 self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
+        return None
 
     async def _search(self, endpoint, response_type, filter=None):
         return await self._get_endpoint(endpoint, response_type, multiple=True,
@@ -110,10 +115,11 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_dataset_by_pid(self, pid):
+    async def get_dataset_by_pid(self, pid, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/datasets/{pid}",
             Dataset,
+            not_found_ok=not_found_ok,
         )
 
     @ensure_logged_in
@@ -150,14 +156,15 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_proposal_by_pid(self, pid):
+    async def get_proposal_by_pid(self, pid, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/proposals/{pid}",
             Proposal,
+            not_found_ok=not_found_ok,
         )
 
     async def get_or_create_proposal(self, proposal):
-        present = await self.get_proposal_by_pid(proposal.proposalId)
+        present = await self.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
         if present is not None:
             self.log.info("Proposal %s found", proposal.proposalId)
             return present
@@ -192,10 +199,11 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_sample_by_id(self, sampleId):
+    async def get_sample_by_id(self, sampleId, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/samples/{sampleId}",
             Sample,
+            not_found_ok=not_found_ok,
         )
 
     async def close(self):
