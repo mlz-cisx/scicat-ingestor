@@ -44,6 +44,8 @@ class SciCatClient:
         async with self.session.get(
             self.config.url + endpoint, *args, **kwargs,
         ) as response:
+            self.log.debug('GET %s expecting %s (multiple=%s)',
+                           endpoint, response_type.__name__, multiple)
             if 200 <= response.status < 300:
                 try:
                     return from_response(response_type, await response.json(), multiple)
@@ -56,6 +58,8 @@ class SciCatClient:
         async with self.session.post(
             self.config.url + endpoint, *args, json=to_dict(request_data), **kwargs,
         ) as response:
+            self.log.debug('POST %s with %s expecting %s',
+                           endpoint, request_data, response_type.__name__,)
             if 200 <= response.status < 300:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
@@ -74,11 +78,14 @@ class SciCatClient:
         self.session.headers["Authorization"] = f"Bearer {login_info.access_token}"
         self.expires = datetime.fromisoformat(login_info.created) \
             + timedelta(seconds=login_info.ttl)
+        self.log.debug("Got Auth token. Expires on %s.", self.expires)
 
     def ensure_logged_in(f):
         async def inner(self, *args, **kwargs):
             if self.expires.timestamp() < datetime.now().timestamp():
                 # we have to refresh the token
+                self.log.debug("Initial authentication required or previous "
+                               "is expired, logging in")
                 await self.login(self.config.user, self.config.pw)
             return await f(self, *args, **kwargs)
         return inner
@@ -132,7 +139,9 @@ class SciCatClient:
     async def get_or_create_proposal(self, proposal):
         present = await self.get_proposal_by_pid(proposal.proposalId)
         if present is not None:
+            self.log.info("Proposal %s found", proposal.proposalId)
             return present
+        self.log.info("Proposal %s not found in SciCat, creating.", proposal.proposalId)
         return await self.create_proposal(proposal)
 
     @ensure_logged_in
@@ -177,6 +186,10 @@ class SciCatClient:
 class CredentialsDto:
     username: str
     password: str
+
+    def __str__(self):
+        # hide password in str formating for debug log
+        return f"CredentialsDto(username={self.username}, password=\"***\")"
 
 
 @dataclass

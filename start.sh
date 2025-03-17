@@ -12,6 +12,5 @@ export RMQ_PASSWORD="w0rkb3nc4"
 export RMQ_STREAM="ingestor-test"
 
 #read -s -p "Scicat Password:" SCICAT_PASSWORD
-echo
 # python src/ingestor.py
 python -m ingestor

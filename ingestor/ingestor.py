@@ -22,12 +22,15 @@ class Ingestor(Backend):
             self.log.error("Uncaught error in on_message: %r", e)
 
     async def _on_message(self, msg_raw, message_context):
+        self.log.info("processing message:")
         msg: Message = parse_message(msg_raw, self.log)
+        self.log.info("message id is %s", msg.id)
         # TODO: change msg w/ hierarchy
 
         dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
         self._calc_checksums(files)
         await self._upload(dataset, datablock, proposal, files, sample)
+        self.log.info("done with message %s", msg.id)
 
     def objects_from_message(self, msg):
         if msg.event == Event.SCAN or msg.event == Event.ENDSCAN:
@@ -147,8 +150,8 @@ class Ingestor(Backend):
         dataset.proposalIds = [str(prop_from_scicat.proposalId)]
         # ensure sample exists
         if await self.client.get_sample_by_id(sample.sampleId) is None:
+            self.log.info("Creating sample %s in SciCat", sample.sampleId)
             await self.client.create_sample(sample)
-
         # create dataset if not present
         if await self.client.get_dataset_by_pid(dataset.pid) is None:
             await self.client.create_dataset(dataset)

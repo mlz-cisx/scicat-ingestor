@@ -1,5 +1,3 @@
-
-import mlzlog
 import rstream
 
 from .message import testmsg
@@ -68,6 +66,8 @@ class RabbitConsumer:
             )
             await self.consumer.run()
         finally:
+            self.log.info("shutting down")
             if self.consumer:
                 await self.consumer.close()
             await self.backend.close()
+            self.log.info("stopped")
