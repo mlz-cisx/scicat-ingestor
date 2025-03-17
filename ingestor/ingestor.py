@@ -146,7 +146,7 @@ class Ingestor(Backend):
 
     async def _upload(self, dataset, datablock, proposal, files, sample):
         # create proposal if not present
-        prop_from_scicat = await self.client.get_or_create_proposal(proposal)
+        prop_from_scicat = await self._get_or_create_proposal(proposal)
         dataset.proposalIds = [str(prop_from_scicat.proposalId)]
         # ensure sample exists
         if await self.client.get_sample_by_id(sample.sampleId, not_found_ok=True) is None:
@@ -159,6 +159,14 @@ class Ingestor(Backend):
             # modify existing
             self.log.info("Dataset %s already exists, adding files", dataset.pid)
             await self._add_files_to_dataset(dataset, datablock, files)
+
+    async def _get_or_create_proposal(self, proposal):
+        present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
+        if present is not None:
+            self.log.info("Proposal %s found", proposal.proposalId)
+            return present
+        self.log.info("Proposal %s not found in SciCat, creating.", proposal.proposalId)
+        await self.client.create_proposal(proposal)
 
     async def _create_new_dataset(self, dataset, datablock):
         self.log.info("Creating Dataset %s in SciCat", dataset.pid)

@@ -163,14 +163,6 @@ class SciCatClient:
             not_found_ok=not_found_ok,
         )
 
-    async def get_or_create_proposal(self, proposal):
-        present = await self.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
-        if present is not None:
-            self.log.info("Proposal %s found", proposal.proposalId)
-            return present
-        self.log.info("Proposal %s not found in SciCat, creating.", proposal.proposalId)
-        return await self.create_proposal(proposal)
-
     @ensure_logged_in
     async def get_instrument_by_pid(self, id):
         return await self._get_endpoint(
