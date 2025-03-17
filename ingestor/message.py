@@ -114,6 +114,7 @@ class Message:
         self.counterinfo = Counters(**content["counterinfo"])
         self.canonicalvalues = content["canonicalvalues"]
 
+        print(content["mapping"])
         self.sample = Sample(
             name=self._get_mapped(content, "sample", "samplename"),
             id=self._get_mapped(content, "sample", "value"),
@@ -124,6 +125,7 @@ class Message:
         mapped = msg["metadata"].get(msg["mapping"].get(mapping))
         ret = mapped.get(key, {}).get("value")
         if ret is None:
+            print(mapped)
             raise ValueError(f"Could not resolve mapping {mapping} with key {key}!")
         return ret
 
@@ -135,7 +137,7 @@ MESSAGES = {
 
 def parse_message(raw, log):
     try:
-        content = json.loads(raw.decode("utf-8"))
+        content = json.loads(raw.body.decode("utf-8"))
     except UnicodeDecodeError:
         log.error("Could not decode RabbitMQ message!")
         return None
