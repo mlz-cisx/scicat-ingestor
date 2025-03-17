@@ -52,7 +52,7 @@ class SciCatClient:
                 except TypeError as e:
                     self.log.error("Error in get request to %s: %r with %s", endpoint, e, await response.json())
             if response.status >= 400:
-                self.log.error("Error in post request to %s: %r", endpoint, await response.text())
+                self.log.error("Error in get request to %s: %r", endpoint, await response.text())
 
     async def _post_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
         self.log.debug('POST %s with %s expecting %s',
@@ -74,7 +74,7 @@ class SciCatClient:
             if 200 <= response.status < 300:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
-                self.log.error("Error in post request to %s: %r", endpoint, await response.text())
+                self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
 
     async def _search(self, endpoint, response_type, filter=None):
         return await self._get_endpoint(endpoint, response_type, multiple=True,
