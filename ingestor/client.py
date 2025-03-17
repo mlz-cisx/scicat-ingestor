@@ -193,7 +193,7 @@ class SciCatClient:
     @ensure_logged_in
     async def create_sample(self, sample):
         return await self._post_endpoint(
-            "/api/v3/sample",
+            "/api/v3/samples",
             Sample,
             sample,
         )
