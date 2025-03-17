@@ -24,7 +24,7 @@ class Ingestor(Backend):
     async def _on_message(self, msg_raw, message_context):
         self.log.info("processing message:")
         msg: Message = parse_message(msg_raw, self.log)
-        self.log.info("message id is %s", msg.id)
+        self.log.info("message id is %s of type %s", msg.id, msg.event)
         # TODO: change msg w/ hierarchy
 
         dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
@@ -152,12 +152,13 @@ class Ingestor(Backend):
         if await self.client.get_sample_by_id(sample.sampleId, not_found_ok=True) is None:
             self.log.info("Creating sample %s in SciCat", sample.sampleId)
             await self.client.create_sample(sample)
+        else:
+            self.log.info("Sample %s found", sample.sampleId)
         # create dataset if not present
         if await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True) is None:
             await self._create_new_dataset(dataset, datablock)
         else:
             # modify existing
-            self.log.info("Dataset %s already exists, adding files", dataset.pid)
             await self._add_files_to_dataset(dataset, datablock, files)
 
     async def _get_or_create_proposal(self, proposal):
@@ -174,6 +175,7 @@ class Ingestor(Backend):
         _ = await self.client.create_origdatablock(datablock)
 
     async def _add_files_to_dataset(self, dataset, datablock, files):
+        self.log.info("Dataset %s already exists, adding files", dataset.pid)
         datablock = (await self.client.get_origdatablocks_for_dataset(dataset.pid))[-1]
         # patch with new files
         prev = {f.path: f for f in datablock.dataFileList}

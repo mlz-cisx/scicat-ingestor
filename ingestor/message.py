@@ -114,7 +114,6 @@ class Message:
         self.counterinfo = Counters(**content["counterinfo"])
         self.canonicalvalues = content["canonicalvalues"]
 
-        print(content["mapping"])
         self.sample = Sample(
             name=self._get_mapped(content, "sample", "samplename"),
             id=self._get_mapped(content, "sample", "value"),
