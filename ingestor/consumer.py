@@ -11,6 +11,9 @@ class Backend:
         pass
 
 
+SUBNAME = "scicat-ingestor"
+
+
 class RabbitConsumer:
     def __init__(self, cfg, backend, log):
         self.cfg = cfg
@@ -33,13 +36,13 @@ class RabbitConsumer:
             raise ValueError("invalid stream name") from e
 
     async def run(self):
-        for msg in testmsg():
-            await self.on_message(msg, None)
-            break
-        return
+        # for msg in testmsg():
+        #     await self.on_message(msg, None)
+        #     break
         try:
-            pass
             r = self.cfg
+            self.log.debug("Creating consumer on %s:%d, (VHost: %r) with user %s)",
+                           r.host, r.port, r.vhost, r.user)
             self.consumer = rstream.Consumer(
                 host=r.host,
                 port=r.port,
@@ -54,9 +57,10 @@ class RabbitConsumer:
             except Exception as e:
                 self.log.error("Connecting to RabbitMQ failed: %r", e)
             # offset = await self.get_offset()
+            self.log.info("consumer started, subscribing to %s as %s", r.stream, SUBNAME)
             await self.consumer.subscribe(
                 stream=r.stream,
-                subscriber_name="scicat-ingestor",  # TODO: from cfg or static?
+                subscriber_name=SUBNAME,  # TODO: from cfg or static?
                 callback=self.on_message,
                 decoder=rstream.amqp_decoder,
                 offset_specification=rstream.ConsumerOffsetSpecification(
@@ -70,4 +74,3 @@ class RabbitConsumer:
             if self.consumer:
                 await self.consumer.close()
             await self.backend.close()
-            self.log.info("stopped")
