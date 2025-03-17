@@ -5,7 +5,7 @@ from pathlib import Path
 import mlzlog
 
 from .client import (CreateDatasetDto, CreateOrigDatablockDto, CreateSampleDto,
-                     CreateProposalDto, DataFile, SciCatClient)
+                     CreateProposalDto, DataFile, SciCatClient, UpdateOrigDataBlockDto)
 from .consumer import Backend
 from .message import Event, Message, parse_message
 
@@ -154,15 +154,32 @@ class Ingestor(Backend):
             await self.client.create_sample(sample)
         # create dataset if not present
         if await self.client.get_dataset_by_pid(dataset.pid) is None:
-            await self.client.create_dataset(dataset)
-        #
-        datablocks = await self.client.get_origdatablocks_for_dataset(dataset.pid)
-        if not datablocks:
-            datablock_scicat = await self.client.create_origdatablock(datablock)
+            await self._create_new_dataset(dataset, datablock)
         else:
-            datablock_scicat = datablocks[-1]
-        # datablock_scicat.pid
+            # modify existing
+            self.log.info("Dataset %s already exists, adding files", dataset.pid)
+            await self._add_files_to_dataset(dataset, datablock, files)
+
+    async def _create_new_dataset(self, dataset, datablock):
+        self.log.info("Creating Dataset %s in SciCat", dataset.pid)
+        await self.client.create_dataset(dataset)
+        _ = await self.client.create_origdatablock(datablock)
+
+    async def _add_files_to_dataset(self, dataset, datablock, files):
+        datablock = (await self.client.get_origdatablocks_for_dataset(dataset.pid))[-1]
         # patch with new files
+        prev = {f.path: f for f in datablock.dataFileList}
+        newfiles = datablock.dataFileList
+        newsize = 0
+        new = 0
+        for file in files:
+            if file.path not in prev:
+                newfiles.append(file)
+                new += 1
+            newsize += file.size
+        update = UpdateOrigDataBlockDto(size=newsize, dataFileList=newfiles)
+        await self.client.update_datablock(datablock._id, update)
+        self.log.info("Added %d new files (%db)", new, newsize - datablock.size)
 
     def _calc_checksums(self, files):
         pass

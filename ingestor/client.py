@@ -41,11 +41,11 @@ class SciCatClient:
         self.expires = datetime.now()
 
     async def _get_endpoint(self, endpoint, response_type, *args, multiple=False, **kwargs):
+        self.log.debug('GET %s expecting %s (multiple=%s)',
+                       endpoint, response_type.__name__, multiple)
         async with self.session.get(
             self.config.url + endpoint, *args, **kwargs,
         ) as response:
-            self.log.debug('GET %s expecting %s (multiple=%s)',
-                           endpoint, response_type.__name__, multiple)
             if 200 <= response.status < 300:
                 try:
                     return from_response(response_type, await response.json(), multiple)
@@ -55,11 +55,22 @@ class SciCatClient:
                 self.log.error("Error in post request to %s: %r", endpoint, await response.text())
 
     async def _post_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
+        self.log.debug('POST %s with %s expecting %s',
+                       endpoint, request_data, response_type.__name__,)
         async with self.session.post(
             self.config.url + endpoint, *args, json=to_dict(request_data), **kwargs,
         ) as response:
-            self.log.debug('POST %s with %s expecting %s',
-                           endpoint, request_data, response_type.__name__,)
+            if 200 <= response.status < 300:
+                return from_response(response_type, await response.json())
+            if response.status >= 400:
+                self.log.error("Error in post request to %s: %r", endpoint, await response.text())
+
+    async def _patch_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
+        self.log.debug('PATCH %s with %s expecting %s',
+                       endpoint, request_data, response_type.__name__,)
+        async with self.session.patch(
+            self.config.url + endpoint, *args, json=to_dict(request_data), **kwargs,
+        ) as response:
             if 200 <= response.status < 300:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
@@ -120,6 +131,15 @@ class SciCatClient:
             OrigDataBlock,
             datablock,
         )
+
+    @ensure_logged_in
+    async def update_datablock(self, datablock_id, datablock_update):
+        return await self._patch_endpoint(
+            f"/api/v3/origdatablocks/{datablock_id}",
+            OrigDataBlock,
+            datablock_update,
+        )
+
 
     @ensure_logged_in
     async def create_proposal(self, proposal):
@@ -368,6 +388,16 @@ class OrigDataBlock:
     instrumentGroup: str | None = None
     isPublished: bool = False
     chkAlg: str | None = None
+
+
+@dataclass
+class UpdateOrigDataBlockDto:
+    size: float
+    dataFileList: list[DataFile]
+    owner_group: str | None = None
+    access_groups: list[str] | None = None
+    instrument_group: str | None = None
+    chk_alg: str | None = None
 
 
 @dataclass
