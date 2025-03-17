@@ -114,12 +114,18 @@ class Message:
         self.counterinfo = Counters(**content["counterinfo"])
         self.canonicalvalues = content["canonicalvalues"]
 
-        samplemapped = content["metadata"][content["mapping"]["sample"]]
         self.sample = Sample(
-            name=samplemapped["samplename"]["value"],
-            id=samplemapped["sampleid"]["value"],
+            name=self._get_mapped(content, "sample", "samplename"),
+            id=self._get_mapped(content, "sample", "value"),
         )
-        self.instrument = content["metadata"][content["mapping"]["instrument"]]["instrument"]["value"]
+        self.instrument = self._get_mapped(content, "instrument", "instrument")
+
+    def _get_mapped(self, msg, mapping, key):
+        mapped = msg["metadata"].get(msg["mapping"].get(mapping))
+        ret = mapped.get(key, {}).get("value")
+        if ret is None:
+            raise ValueError(f"Could not resolve mapping {mapping} with key {key}!")
+        return ret
 
 
 MESSAGES = {
