@@ -16,7 +16,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-   "requests",
+   "mlzlog",
    "dateutils",
    "rstream>=0.20.5",
    "python-dotenv",
@@ -28,11 +28,14 @@ dynamic = [
 ]
 
 [project.scripts]
-ingestor = "ingestor:run"
+ingestor = "ingestor.main:main"
+
+[tool.setuptools.packages.find]
+include = ["ingestor"]
 
 
 [tool.setuptools_scm]
-write_to = "src/version.py"
+write_to = "ingestor/version.py"
 
 
 [tool.pylint.main]

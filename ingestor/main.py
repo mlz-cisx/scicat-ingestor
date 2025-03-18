@@ -75,7 +75,7 @@ def get_config():
     return Config(rmq, sc)
 
 
-async def main():
+async def _main():
     cfg = get_config()
 
     loop = asyncio.get_event_loop()
@@ -95,6 +95,6 @@ async def main():
         mlzlog.log.info("stopped")
 
 
-if __name__ == "__main__":
-    mlzlog.initLogging("ingest", rootlevel='debug', logdir=None)  # only to console
-    asyncio.run(main())
+def main():
+    mlzlog.initLogging("ingest", rootlevel='info', logdir=None)  # only to console
+    asyncio.run(_main())
