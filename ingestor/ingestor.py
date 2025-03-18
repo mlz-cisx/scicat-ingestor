@@ -1,11 +1,12 @@
-from datetime import datetime
 import math
+from datetime import datetime
 from pathlib import Path
 
 import mlzlog
 
-from .client import (CreateDatasetDto, CreateOrigDatablockDto, CreateSampleDto,
-                     CreateProposalDto, DataFile, SciCatClient, UpdateOrigDataBlockDto)
+from .client import (CreateDatasetDto, CreateOrigDatablockDto,
+                     CreateProposalDto, CreateSampleDto, DataFile,
+                     SciCatClient, UpdateOrigDataBlockDto)
 from .consumer import Backend
 from .message import Event, Message, parse_message
 
