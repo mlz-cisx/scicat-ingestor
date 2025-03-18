@@ -1,6 +1,7 @@
-import rstream
+import asyncio
+import sys
 
-from .message import testmsg
+import rstream
 
 
 class Backend:
@@ -35,6 +36,32 @@ class RabbitConsumer:
         except rstream.StreamDoesNotExist as e:
             raise ValueError("invalid stream name") from e
 
+    async def on_connection_closed(self, disconnection_info: rstream.OnClosedErrorInfo) -> None:
+        self.log.warning(
+            "connection has been closed from stream: %s for reason: %s",
+            disconnection_info.streams,
+            disconnection_info.reason,
+        )
+        await asyncio.sleep(2)
+        for stream in disconnection_info.streams:
+            backoff = 2
+            count = 0
+            while True:
+                try:
+                    self.log.debug("trying to reconnect to stream: %s", stream)
+                    if self.consumer is not None:
+                        await self.consumer.reconnect_stream(stream)
+                    break
+                except Exception as ex:
+                    if count > 10:
+                        # TODO: or try infinitely often?
+                        self.log.exception("reconnection failed, giving up.")
+                        sys.exit(-1)
+                    backoff = min(backoff * 2, 60)
+                    count += 1
+                    self.log.warning("Reconnecting failed: %r (retrying in %ds)", ex, backoff)
+                    await asyncio.sleep(backoff)
+
     async def run(self):
         # for msg in testmsg():
         #     await self.on_message(msg, None)
@@ -49,7 +76,7 @@ class RabbitConsumer:
                 vhost=r.vhost,
                 username=r.user,
                 password=r.pw,
-                # on_close_handler=,
+                on_close_handler=self.on_connection_closed,
                 load_balancer_mode=True,  # TODO: does not work without, what it do?
             )
             try:
