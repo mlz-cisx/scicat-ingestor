@@ -180,7 +180,13 @@ class SciCatClient:
 
     @ensure_logged_in
     async def instrument_by_unique_name(self, uname):
-        return await self.search_instruments(filter={"where": {"uniqueName": uname}})
+        instruments = await self.search_instruments(filter={"where": {"uniqueName": uname}})
+        if not instruments:
+            return None
+        if len(instruments) > 1:
+            raise RuntimeError(f"Ambiguous uniqueName '{uname}'?!")
+        return instruments[0]
+
 
     @ensure_logged_in
     async def create_sample(self, sample):
@@ -342,6 +348,7 @@ class Dataset:
     endTime: str | None = None
     dataFormat: str | None = None
     runNumber: str | None = None
+    proposalId: str | None = None
     proposalIds: list[str] | None | list = None
     sampleIds: list[str] | None = None
     instrumentIds: list[str] | None = None
