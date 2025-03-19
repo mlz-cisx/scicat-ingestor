@@ -50,7 +50,7 @@ class Ingestor(Backend):
             datasetName=msg.name or "Scan",
             creationTime=datetime.now().isoformat(),
             pid=scanid,
-            isPublished=True,
+            isPublished=False,
             description="not available",
             scientificMetadata=self.get_scientific_metadata(msg),
             runNumber=str(0),
@@ -60,15 +60,15 @@ class Ingestor(Backend):
         proposal = CreateProposalDto(
             ownerGroup=msg.propinfo.session,
             accessGroups=[msg.propinfo.instrument],
-            proposalId=msg.propinfo.proposal,
+            proposalId=msg.propinfo.proposal + "test",
             email=msg.propinfo.mainproposer.email,
             title=msg.propinfo.title,
         )
 
         sample = CreateSampleDto(
             sampleId=str(msg.sample.id),
-            owner="",
-            ownerGroup="",
+            owner="ingestor",
+            ownerGroup="ingestor",
             accessGroups=[],
             instrumentGroup="",
             description=msg.sample.name,
@@ -148,7 +148,7 @@ class Ingestor(Backend):
     async def _upload(self, dataset, datablock, proposal, files, sample):
         # create proposal if not present
         prop_from_scicat = await self._get_or_create_proposal(proposal)
-        dataset.proposalIds = [str(prop_from_scicat.proposalId)]
+        dataset.proposalId = str(prop_from_scicat.proposalId)
         # ensure sample exists
         if await self.client.get_sample_by_id(sample.sampleId, not_found_ok=True) is None:
             self.log.info("Creating sample %s in SciCat", sample.sampleId)
