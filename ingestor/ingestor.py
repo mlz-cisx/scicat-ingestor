@@ -6,7 +6,7 @@ import mlzlog
 
 from .client import (CreateDatasetDto, CreateOrigDatablockDto,
                      CreateProposalDto, CreateSampleDto, DataFile,
-                     SciCatClient, UpdateOrigDataBlockDto)
+                     SciCatClient, UpdateOrigDataBlockDto, UpdateDatasetDto)
 from .consumer import Backend
 from .message import Event, Message, parse_message
 
@@ -38,12 +38,16 @@ class Ingestor(Backend):
             scanid = msg.id
         else:
             scanid = msg.scanid
+        if msg.fileinfos:
+            sourceFolder = msg.fileinfos[0].proposalpath
+        else:
+            sourceFolder = "FIXME"
         dataset = CreateDatasetDto(
             type="raw",
             owner="ingestor",
             ownerGroup=msg.propinfo.session,
             accessGroups=[msg.propinfo.session, msg.propinfo.instrument],
-            sourceFolder="/",  # TODO: sometimes there is no file yet, and we can't know
+            sourceFolder=sourceFolder,  # TODO: sometimes there is no file yet, and we can't know
             contactEmail="datasteward@mlz-garching.de",  # TODO
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=msg.propinfo.mainproposer.name,
@@ -170,6 +174,12 @@ class Ingestor(Backend):
         else:
             # modify existing
             await self._add_files_to_dataset(dataset, datablock, files)
+
+        # Workaround for base filepath missing
+        ds = await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
+        if ds.sourceFolder == "FIXME" and ds and dataset.sourceFolder != "FIXME":
+            ds_patch = UpdateDatasetDto(sourceFolder=dataset.sourceFolder)
+            await self.client.modify_dataset(ds.pid, ds_patch)
 
     async def _get_or_create_proposal(self, proposal):
         present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
