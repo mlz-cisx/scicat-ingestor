@@ -123,6 +123,14 @@ class SciCatClient:
         )
 
     @ensure_logged_in
+    async def update_dataset(self, dataset_id, dataset_update):
+        return await self._patch_endpoint(
+            f"/api/v3/origdatablocks/{dataset_id}",
+            Dataset,
+            dataset_update,
+        )
+
+    @ensure_logged_in
     async def get_origdatablocks_for_dataset(self, pid):
         return await self._get_endpoint(
             f"/api/v3/datasets/{pid}/origdatablocks",
@@ -145,7 +153,6 @@ class SciCatClient:
             OrigDataBlock,
             datablock_update,
         )
-
 
     @ensure_logged_in
     async def create_proposal(self, proposal):
@@ -186,7 +193,6 @@ class SciCatClient:
         if len(instruments) > 1:
             raise RuntimeError(f"Ambiguous uniqueName '{uname}'?!")
         return instruments[0]
-
 
     @ensure_logged_in
     async def create_sample(self, sample):
@@ -357,6 +363,51 @@ class Dataset:
     # jobParameters: ???
     jobLogData: str | None = None
 
+
+@dataclass
+class UpdateDatasetDto:
+    ownerGroup: str | None = None
+    isPublished: bool | None = None
+    owner: str | None = None
+    contactEmail: str | None = None
+    sourceFolder: str | None = None
+    size: int | None = None
+    numberOfFiles: int | None = None
+    creationTime: str | None = None
+    creationLocation: str | None = None
+    datasetName: str | None = None
+    accessGroups: list[str] | None = None
+    datasetlifecycle: DatasetLifeCycle | None = None
+    instrumentGroup: str | None = None
+    ownerEmail: str | None = None
+    orcidOfOwner: str | None = None
+    sourceFolderHost: str | None = None
+    packedSize: int | None = None
+    numberOfFilesArchived: int | None = None
+    validationStatus: str | None = None
+    keywords: list[str] | None = None
+    description: str | None = None
+    classification: str | None = None
+    license: str | None = None
+    # techniques: list[Technique] | None = None
+    # relationships: list[Relationship] | None = None
+    sharedWith: list[str] | None = None
+    scientificMetadata: dict[str, object] | None = None
+    comment: str | None = None
+    dataQualityMetrics: int | None = None
+    principalInvestigator: str | None = None
+    startTime: str | None = None
+    endTime: str | None = None
+    dataFormat: str | None = None
+    runNumber: str | None = None
+    proposalId: str | None = None
+    proposalIds: list[str] | None | list = None
+    sampleIds: list[str] | None = None
+    instrumentIds: list[str] | None = None
+    inputDatasets: list[str] | None = None
+    usedSoftware: list[str] | None = None
+    # jobParameters: ???
+    jobLogData: str | None = None
 
 @dataclass
 class DataFile:
