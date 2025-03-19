@@ -1,0 +1,5 @@
+* find out, which of these is the correct way
+  - sampleId, instrumentId, proposalId
+  - sampleIds, instrumentIds, proposalIds
+* checksum calculation
+* remove hack with path if the first message does not have a file
