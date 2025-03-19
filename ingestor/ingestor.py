@@ -155,6 +155,13 @@ class Ingestor(Backend):
             await self.client.create_sample(sample)
         else:
             self.log.info("Sample %s found", sample.sampleId)
+        instrument = await self.client.instrument_by_unique_name(f"MLZ.{dataset.instrumentId}")
+        if instrument:
+            dataset.instrumentId = instrument.pid
+        else:
+            self.log.warning("Unknown instrument %r, submitting it anyway.",
+                             dataset.instrumentId)
+
         # create dataset if not present
         if await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True) is None:
             self.log.info("Creating Dataset %s in SciCat", dataset.pid)
