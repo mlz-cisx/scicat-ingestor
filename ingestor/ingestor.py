@@ -20,7 +20,8 @@ class Ingestor(Backend):
         try:
             await self._on_message(msg_raw, message_context)
         except Exception as e:
-            self.log.error("Uncaught error in on_message: %r", e)
+            self.log.exception("Uncaught error in on_message: %r", e)
+            raise
 
     async def _on_message(self, msg_raw, message_context):
         self.log.info("processing message:")
