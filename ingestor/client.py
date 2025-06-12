@@ -125,7 +125,7 @@ class SciCatClient:
     @ensure_logged_in
     async def update_dataset(self, dataset_id, dataset_update):
         return await self._patch_endpoint(
-            f"/api/v3/origdatablocks/{dataset_id}",
+            f"/api/v3/datasets/{dataset_id}",
             Dataset,
             dataset_update,
         )
