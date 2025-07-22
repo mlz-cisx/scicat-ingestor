@@ -205,7 +205,7 @@ class Ingestor(Backend):
     async def _add_files_to_dataset(self, dataset, datablock, files):
         self.log.info("Dataset %s already exists, adding files", dataset.pid)
         datablock_from_scicat = await self.client.get_origdatablocks_for_dataset(dataset.pid)
-        if datablock_from_scicat and datablock_from_scicat[-1].dataFileList < 200:
+        if datablock_from_scicat and len(datablock_from_scicat[-1].dataFileList) < 200:
             datablock_from_scicat = datablock_from_scicat[-1]
         else:
             datablock_from_scicat = await self._create_datablock(dataset, datablock)
