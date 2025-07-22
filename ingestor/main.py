@@ -75,7 +75,7 @@ def get_config():
     if not rmq_pw:
         raise ValueError("No RabbitMQ password configured!")
     rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
-    rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT"), 5672)
+    rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT", 5672))
     rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_queue_port, rmq_vhost, rmq_stream, rmq_user,
                          rmq_pw, rmq_workqueue)
     return Config(rmq, sc)
