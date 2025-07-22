@@ -49,7 +49,8 @@ def get_config():
         raise ValueError('No SciCat url configured')
     sc_url = sc_url.rstrip("/")
     try:
-        auth_strategy = AuthStrategy(os.environ.get("SCICAT_AUTH_STRATEGY", "login"))
+        auth_strategy = os.environ.get("SCICAT_AUTH_STRATEGY", "login")
+        auth_strategy = AuthStrategy(auth_strategy)
     except ValueError as e:
         raise ValueError(
             f"Argument {auth_strategy!r} is not a valid authentication strategy. "

@@ -5,7 +5,7 @@ import rstream
 
 
 class Backend:
-    async def on_message(msg_raw, message_context):
+    async def on_message(self, msg_raw, message_context):
         raise NotImplementedError()
 
     async def close(self):

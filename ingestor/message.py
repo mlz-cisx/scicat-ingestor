@@ -2,7 +2,6 @@ import json
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
 
 
 class Event(StrEnum):

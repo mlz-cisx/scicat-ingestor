@@ -32,7 +32,6 @@ class Ingestor(Backend):
         # TODO: change msg w/ hierarchy
 
         dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
-        self._calc_checksums(files)
         await self._upload(dataset, datablock, proposal, files, sample)
         await self._queue_filecopies(msg.event, dataset, files)
         self.log.info("done with message %s", msg.id)

@@ -16,6 +16,8 @@ class RmqClient:
         self.config = config
         self.log = log
         self.enabled = True
+        self.connection = None
+        self.channel = None
 
     async def setup(self):
         if self.config.workqueue is None:
@@ -32,7 +34,7 @@ class RmqClient:
         self.channel = await self.connection.channel()
         self.channel.declare_queue(queue=self.config.workqueue, durable=True)
 
-    async def queue_copies(self, event, dataset, files):
+    async def queue_copies(self, dataset, files):
         if not self.enabled:
             return
         messages = [
@@ -48,7 +50,7 @@ class RmqClient:
                 ap.Message(
                     body=json.dumps(asdict(message)).encode("utf-8"),
                     routing_key=self.config.workqueue,
-                    delivery_mode=ap.DeliverMode.PERSISTENT
+                    delivery_mode=ap.DeliverMode.PERSISTENT,
                 ))
 
     async def close(self):

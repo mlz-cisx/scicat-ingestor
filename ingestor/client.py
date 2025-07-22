@@ -18,13 +18,11 @@ def from_response(response_type, data, multiple=False):
         # an empty body
         return None
     if not is_dataclass(response_type):
-        raise ValueError("response_type has to be a dataclass (got %r)" % response_type)
+        raise ValueError(f"response_type has to be a dataclass (got {response_type!r})")
     if multiple:
         if isinstance(data, list):
             return [from_dict(response_type, elem) for elem in data]
-        else:
-            print(data)
-            raise ValueError("Did not get a list as data for multiple=True")
+        raise ValueError("Did not get a list as data for multiple=True")
     return from_dict(response_type, data)
 
 
