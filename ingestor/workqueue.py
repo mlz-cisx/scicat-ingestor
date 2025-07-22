@@ -32,11 +32,14 @@ class RmqClient:
             password=self.config.pw,
         )
         self.channel = await self.connection.channel()
-        self.channel.declare_queue(self.config.workqueue, durable=True)
+        await self.channel.declare_queue(self.config.workqueue, durable=True)
+        self.log.info("Queue for file copies is set up.")
 
     async def queue_copies(self, dataset, files):
         if not self.enabled:
             return
+        self.log.debug("Queueing the following files of dataset %s for copy: %s",
+                       dataset, files)
         messages = [
             Message(
                 dataset_id=dataset.pid,
