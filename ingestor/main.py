@@ -13,20 +13,20 @@ from .consumer import RabbitConsumer
 from .ingestor import \
     Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
 
-#import logging
-#logging.basicConfig(level=logging.DEBUG)
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
 
 
 @dataclass
 class RabbitMQConfig:
     host: str
     port: int
+    queue_port: int
     vhost: str
     stream: str
     user: str
     pw: str
     workqueue: str | None = None
-    queue_port: int
 
 
 @dataclass
@@ -76,8 +76,8 @@ def get_config():
         raise ValueError("No RabbitMQ password configured!")
     rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
     rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT"), 5672)
-    rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_vhost, rmq_stream, rmq_user,
-                         rmq_pw, rmq_workqueue, rmq_queue_port)
+    rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_queue_port, rmq_vhost, rmq_stream, rmq_user,
+                         rmq_pw, rmq_workqueue)
     return Config(rmq, sc)
 
 
