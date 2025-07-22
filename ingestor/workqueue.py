@@ -21,18 +21,18 @@ class RmqClient:
 
     async def setup(self):
         if self.config.workqueue is None:
-            self.log.info("no queue for file copies configured.")
+            self.log.info("No queue for file copies configured.")
             self.enabled = False
             return
         self.connection = await ap.connect_robust(
             host=self.config.host,
-            port=self.config.port,
+            port=self.config.queue_port,
             virtualhost=self.config.vhost,
             login=self.config.user,
             password=self.config.pw,
         )
         self.channel = await self.connection.channel()
-        self.channel.declare_queue(queue=self.config.workqueue, durable=True)
+        self.channel.declare_queue(self.config.workqueue, durable=True)
 
     async def queue_copies(self, dataset, files):
         if not self.enabled:

@@ -26,6 +26,7 @@ class RabbitMQConfig:
     user: str
     pw: str
     workqueue: str | None = None
+    queue_port: int | None = None
 
 
 @dataclass
@@ -62,7 +63,7 @@ def get_config():
     rmq_host = os.environ.get("RMQ_HOST")
     if not rmq_host:
         raise ValueError("No RabbitMQ url configured")
-    rmq_port = int(os.environ.get("RMQ_PORT", 5552))
+    rmq_port = int(os.environ.get("RMQ_STREAM_PORT", 5552))
     rmq_vhost = os.environ.get("RMQ_VHOST", "/")
     rmq_stream = os.environ.get("RMQ_STREAM")
     if not rmq_stream:
@@ -74,8 +75,9 @@ def get_config():
     if not rmq_pw:
         raise ValueError("No RabbitMQ password configured!")
     rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
+    rmq_queue_port = os.environ.get("RMQ_QUEUE_PORT")
     rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_vhost, rmq_stream, rmq_user,
-                         rmq_pw, rmq_workqueue)
+                         rmq_pw, rmq_workqueue, rmq_queue_port)
     return Config(rmq, sc)
 
 
