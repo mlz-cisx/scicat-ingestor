@@ -3,8 +3,6 @@ from dataclasses import asdict, dataclass
 
 import aio_pika as ap
 
-from .message import Event
-
 
 @dataclass
 class Message:
@@ -17,8 +15,13 @@ class RmqClient:
     def __init__(self, config, log):
         self.config = config
         self.log = log
+        self.enabled = True
 
     async def setup(self):
+        if self.config.workqueue is None:
+            self.log.info("no queue for file copies configured.")
+            self.enabled = False
+            return
         self.connection = await ap.connect_robust(
             host=self.config.host,
             port=self.config.port,
@@ -30,6 +33,8 @@ class RmqClient:
         self.channel.declare_queue(queue=self.config.workqueue, durable=True)
 
     async def queue_copies(self, event, dataset, files):
+        if not self.enabled:
+            return
         messages = [
             Message(
                 dataset_id=dataset.pid,
