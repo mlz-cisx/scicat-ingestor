@@ -150,16 +150,3 @@ def parse_message(raw, log):
                   msg_version, ', '.join(MESSAGES.keys()))
         return None
     return msg_class(content, log)
-
-
-# TODO remove later
-def testmsg():
-    with open(Path(__file__).parent / "../sans-v2-subscan.json", "rb") as f:
-        msgs = f.read()
-
-    out = []
-    for msg in msgs.split(b"\n"):
-        if not msg:
-            continue
-        out.append(msg)
-    return out
