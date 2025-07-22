@@ -5,11 +5,14 @@ import rstream
 
 
 class Backend:
+    async def setup(self):
+        """Called before the first message."""
+
     async def on_message(self, msg_raw, message_context):
         raise NotImplementedError()
 
     async def close(self):
-        pass
+        """Close any conenctions that are needed"""
 
 
 SUBNAME = "scicat-ingestor"
@@ -83,6 +86,10 @@ class RabbitConsumer:
                 await self.consumer.start()
             except Exception as e:
                 self.log.error("Connecting to RabbitMQ failed: %r", e)
+            try:
+                await self.backend.setup()
+            except Exception as e:
+                self.log.error("Error in setup of backend: %r", e)
             # offset = await self.get_offset()
             self.log.info("consumer started, subscribing to %s as %s", r.stream, SUBNAME)
             await self.consumer.subscribe(

@@ -18,6 +18,9 @@ class Ingestor(Backend):
         self.client = SciCatClient(cfg.sc, mlzlog.getLogger("client"))
         self.workqueue = RmqClient(cfg.rmq, mlzlog.getLogger("workqueue"))
 
+    async def setup(self):
+        self.workqueue.setup()
+
     async def on_message(self, msg_raw, message_context):
         try:
             await self._on_message(msg_raw, message_context)
