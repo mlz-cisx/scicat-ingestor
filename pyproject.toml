@@ -21,6 +21,7 @@ dependencies = [
    "rstream>=0.20.5",
    "python-dotenv",
    "aiohttp",
+   "aio-pika",
    "dacite",
   ]
 dynamic = [

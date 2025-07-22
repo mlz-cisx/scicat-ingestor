@@ -9,12 +9,14 @@ from .client import (CreateDatasetDto, CreateOrigDatablockDto,
                      SciCatClient, UpdateOrigDataBlockDto, UpdateDatasetDto)
 from .consumer import Backend
 from .message import Event, Message, parse_message
+from .workqueue import RmqClient
 
 
 class Ingestor(Backend):
     def __init__(self, cfg, log):
         self.log = log
-        self.client = SciCatClient(cfg, mlzlog.getLogger("client"))
+        self.client = SciCatClient(cfg.sc, mlzlog.getLogger("client"))
+        self.workqueue = RmqClient(cfg.rmq, mlzlog.getLogger("workqueue"))
 
     async def on_message(self, msg_raw, message_context):
         try:
@@ -32,6 +34,7 @@ class Ingestor(Backend):
         dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
         self._calc_checksums(files)
         await self._upload(dataset, datablock, proposal, files, sample)
+        await self._queue_filecopies(msg.event, dataset, files)
         self.log.info("done with message %s", msg.id)
 
     def objects_from_message(self, msg):
@@ -200,7 +203,7 @@ class Ingestor(Backend):
     async def _add_files_to_dataset(self, dataset, datablock, files):
         self.log.info("Dataset %s already exists, adding files", dataset.pid)
         datablock_from_scicat = await self.client.get_origdatablocks_for_dataset(dataset.pid)
-        if datablock_from_scicat:
+        if datablock_from_scicat and datablock_from_scicat[-1].dataFileList < 200:
             datablock_from_scicat = datablock_from_scicat[-1]
         else:
             datablock_from_scicat = await self._create_datablock(dataset, datablock)
@@ -229,8 +232,26 @@ class Ingestor(Backend):
         await self.client.update_datablock(datablock_from_scicat._id, update)
         self.log.info("Added %d new files (%db)", new, newsize - datablock.size)
 
-    def _calc_checksums(self, files):
-        pass
+    async def _queue_filecopies(self, event, dataset, files):
+        """Queue files for copying.
+
+        When there are multiple OrigDataBlocks we have to find out where the
+        files live first. This could be optimised in the future.
+        """
+        # only handle completed points and scans, as the files should be finished
+        if event not in (Event.POINT, Event.ENDSCAN,
+                         Event.ENDSUBSCAN, Event.ENDBLOCK):
+            return
+        datablocks = await self.client.get_origdatablocks_for_dataset(dataset)
+        filepaths = [file.path for file in files]
+        fs = [
+            (datablock._id, file.path)
+            for datablock in datablocks[2:]
+            for file in datablock.dataFileList
+            if file.path in filepaths
+        ]
+        await self.workqueue.queue_copies(dataset, fs)
 
     async def close(self):
         await self.client.close()
+        await self.workqueue.close()

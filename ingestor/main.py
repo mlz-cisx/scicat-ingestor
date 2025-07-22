@@ -25,6 +25,7 @@ class RabbitMQConfig:
     stream: str
     user: str
     pw: str
+    workqueue: str | None = None
 
 
 @dataclass
@@ -71,7 +72,9 @@ def get_config():
     rmq_pw = os.environ.get("RMQ_PASSWORD")
     if not rmq_pw:
         raise ValueError("No RabbitMQ password configured!")
-    rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_vhost, rmq_stream, rmq_user, rmq_pw)
+    rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
+    rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_vhost, rmq_stream, rmq_user,
+                         rmq_pw, rmq_workqueue)
     return Config(rmq, sc)
 
 
@@ -87,7 +90,7 @@ async def _main():
     loop.add_signal_handler(signal.SIGINT, stop_everything, "SIGINT")
     loop.add_signal_handler(signal.SIGTERM, stop_everything, "SIGTERM")
 
-    ingestor = Ingestor(cfg.sc, mlzlog.getLogger("ingestor"))
+    ingestor = Ingestor(cfg, mlzlog.getLogger("ingestor"))
     consumer = RabbitConsumer(cfg.rmq, ingestor, mlzlog.getLogger("consumer"))
     try:
         await consumer.run()
