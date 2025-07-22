@@ -19,7 +19,7 @@ class Ingestor(Backend):
         self.workqueue = RmqClient(cfg.rmq, mlzlog.getLogger("workqueue"))
 
     async def setup(self):
-        self.workqueue.setup()
+        await self.workqueue.setup()
 
     async def on_message(self, msg_raw, message_context):
         try:
