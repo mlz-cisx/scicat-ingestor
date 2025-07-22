@@ -6,7 +6,7 @@ import mlzlog
 
 from .client import (CreateDatasetDto, CreateOrigDatablockDto,
                      CreateProposalDto, CreateSampleDto, DataFile,
-                     SciCatClient, UpdateOrigDataBlockDto, UpdateDatasetDto)
+                     SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto)
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
