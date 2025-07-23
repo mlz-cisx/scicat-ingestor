@@ -232,7 +232,10 @@ class Ingestor(Backend):
                 newsize += prev[file].size
         update = UpdateOrigDataBlockDto(size=newsize, dataFileList=newfiles)
         await self.client.update_datablock(datablock_from_scicat._id, update)
-        self.log.info("Added %d new files (%db)", new, newsize - datablock.size)
+        if new:
+            self.log.info("Added %d new files (%db)", new, newsize - datablock.size)
+        else:
+            self.log.info("No new files to add.")
 
     async def _queue_filecopies(self, event, dataset, files):
         """Queue files for copying.
