@@ -244,7 +244,7 @@ class Ingestor(Backend):
         if event not in (Event.POINT, Event.ENDSCAN,
                          Event.ENDSUBSCAN, Event.ENDBLOCK):
             return
-        datablocks = await self.client.get_origdatablocks_for_dataset(dataset)
+        datablocks = await self.client.get_origdatablocks_for_dataset(dataset.pid)
         if datablocks is None or not files:
             # no files in dataset yet or we don't have anything to add
             return
