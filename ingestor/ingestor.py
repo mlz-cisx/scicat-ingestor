@@ -1,12 +1,8 @@
 import math
-from datetime import datetime
-from pathlib import Path
 
 import mlzlog
 
-from .client import (CreateDatasetDto, CreateOrigDatablockDto,
-                     CreateProposalDto, CreateSampleDto, DataFile,
-                     SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto)
+from .client import SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
@@ -114,7 +110,7 @@ class Ingestor(Backend):
         ds = await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
         if ds.sourceFolder == "FIXME" and ds and dataset.sourceFolder != "FIXME":
             ds_patch = UpdateDatasetDto(sourceFolder=dataset.sourceFolder)
-            await self.client.modify_dataset(ds.pid, ds_patch)
+            await self.client.update_dataset(ds.pid, ds_patch)
 
     async def _get_or_create_proposal(self, proposal):
         present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)

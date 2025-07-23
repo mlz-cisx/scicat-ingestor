@@ -1,11 +1,12 @@
 import json
 from collections import namedtuple
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from datetime import datetime
 
-from .client import DataFile, CreateDatasetDto, CreateOrigDatablockDto, CreateSampleDto, CreateProposalDto
+from .client import (CreateDatasetDto, CreateOrigDatablockDto,
+                     CreateProposalDto, CreateSampleDto, DataFile)
 
 
 class Event(StrEnum):
