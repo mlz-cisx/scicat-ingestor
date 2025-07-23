@@ -48,7 +48,7 @@ class RmqClient:
             )
             for file in files
         ]
-        self.log.info("Queueing %d files for copying.", len(messages))
+        self.log.info("Queueing %d file(s) for copying.", len(messages))
         for message in messages:
             await self.channel.default_exchange.publish(
                 ap.Message(
