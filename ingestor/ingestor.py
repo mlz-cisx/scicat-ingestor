@@ -254,7 +254,7 @@ class Ingestor(Backend):
         filepaths = [file.path for file in files]
         fs = [
             (datablock._id, file.path)
-            for datablock in datablocks[2:]
+            for datablock in datablocks[:2]
             for file in datablock.dataFileList
             if file.path in filepaths
         ]

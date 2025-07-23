@@ -43,18 +43,20 @@ class RmqClient:
         messages = [
             Message(
                 dataset_id=dataset.pid,
-                datablock_id=files[0],
+                datablock_id=file[0],
                 filepath=file[1],
             )
             for file in files
         ]
+        self.log.info("Queueing %d files for copying.", len(messages))
         for message in messages:
             await self.channel.default_exchange.publish(
                 ap.Message(
                     body=json.dumps(asdict(message)).encode("utf-8"),
-                    routing_key=self.config.workqueue,
-                    delivery_mode=ap.DeliverMode.PERSISTENT,
-                ))
+                    delivery_mode=ap.DeliveryMode.PERSISTENT,
+                ),
+                routing_key=self.config.workqueue,
+            )
 
     async def close(self):
         await self.connection.close()
