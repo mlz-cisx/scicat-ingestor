@@ -34,83 +34,12 @@ class Ingestor(Backend):
         self.log.info("message id is %s of type %s", msg.id, msg.event)
         # TODO: change msg w/ hierarchy
 
-        dataset, datablock, proposal, files, sample = self.objects_from_message(msg)
-        await self._upload(dataset, datablock, proposal, files, sample)
-        await self._queue_filecopies(msg.event, dataset, files)
+        dataset = msg.get_dataset_dto()
+        dataset.scientificMetadata = self.get_scientific_metadata(msg)
+        await self._upload(dataset, msg.get_datablock_dto(), msg.get_proposal_dto(),
+                           msg.get_datafiles(), msg.get_sample_dto())
+        await self._queue_filecopies(msg)
         self.log.info("done with message %s", msg.id)
-
-    def objects_from_message(self, msg):
-        if msg.event == Event.SCAN or msg.event == Event.ENDSCAN:
-            scanid = msg.id
-        else:
-            scanid = msg.scanid
-        if msg.fileinfos:
-            sourceFolder = msg.fileinfos[0].proposalpath
-        else:
-            sourceFolder = "FIXME"
-        dataset = CreateDatasetDto(
-            type="raw",
-            owner="ingestor",
-            ownerGroup=msg.propinfo.session,
-            accessGroups=[msg.propinfo.session, msg.propinfo.instrument],
-            sourceFolder=sourceFolder,  # TODO: sometimes there is no file yet, and we can't know
-            contactEmail="datasteward@mlz-garching.de",  # TODO
-            creationLocation="MLZ",  # TODO: instrument?
-            principalInvestigator=msg.propinfo.mainproposer.name,
-            datasetName=msg.name or "Scan",
-            creationTime=datetime.now().isoformat(),
-            pid=scanid,
-            isPublished=False,
-            description="not available",
-            scientificMetadata=self.get_scientific_metadata(msg),
-            runNumber=str(0),
-            sampleId=str(msg.sample.id),
-            instrumentId=msg.instrument,
-        )
-        proposal = CreateProposalDto(
-            ownerGroup=msg.propinfo.session,
-            accessGroups=[msg.propinfo.instrument],
-            proposalId=msg.propinfo.proposal + "test",
-            email=msg.propinfo.mainproposer.email,
-            title=msg.propinfo.title,
-        )
-
-        sample = CreateSampleDto(
-            sampleId=str(msg.sample.id),
-            owner="ingestor",
-            ownerGroup="ingestor",
-            accessGroups=[],
-            instrumentGroup="",
-            description=msg.sample.name,
-        )
-
-        files = []
-        totalsize = 0
-        for fileinfo in msg.fileinfos:
-            path = Path(fileinfo.path)
-            samplepath = Path(fileinfo.samplepath)
-            path = str(path.relative_to(samplepath))
-            totalsize += fileinfo.size
-            files.append(DataFile(
-                path=path,
-                size=fileinfo.size,
-                time=fileinfo.ctime,
-                chk=None,  # TODO
-                uid=str(fileinfo.uid),
-                gid=str(fileinfo.gid),
-                perm=str(fileinfo.mode),
-            ))
-
-        datablock = CreateOrigDatablockDto(
-            datasetId=dataset.pid,
-            ownerGroup=msg.propinfo.session,
-            accessGroups=[msg.propinfo.instrument],
-            instrumentGroup=msg.propinfo.instrument,
-            # chkAlg=,
-            dataFileList=files,
-            size=totalsize,
-        )
-        return dataset, datablock, proposal, files, sample
 
     def get_scientific_metadata(self, msg):
         smd = {}
@@ -237,28 +166,28 @@ class Ingestor(Backend):
         else:
             self.log.info("No new files to add.")
 
-    async def _queue_filecopies(self, event, dataset, files):
+    async def _queue_filecopies(self, msg):
         """Queue files for copying.
 
         When there are multiple OrigDataBlocks we have to find out where the
         files live first. This could be optimised in the future.
         """
         # only handle completed points and scans, as the files should be finished
-        if event not in (Event.POINT, Event.ENDSCAN,
-                         Event.ENDSUBSCAN, Event.ENDBLOCK):
+        if msg.event not in (Event.POINT, Event.ENDSCAN,
+                             Event.ENDSUBSCAN, Event.ENDBLOCK):
             return
-        datablocks = await self.client.get_origdatablocks_for_dataset(dataset.pid)
-        if datablocks is None or not files:
+        datablocks = await self.client.get_origdatablocks_for_dataset(msg.dataset_pid)
+        if datablocks is None or not msg.fileinfos:
             # no files in dataset yet or we don't have anything to add
             return
-        filepaths = [file.path for file in files]
+        filepaths = [file.path for file in msg.fileinfos]
         fs = [
-            (datablock._id, file.path)
+            (datablock._id, str(file.path))
             for datablock in datablocks[:2]
             for file in datablock.dataFileList
             if file.path in filepaths
         ]
-        await self.workqueue.queue_copies(dataset, fs)
+        await self.workqueue.queue_copies(msg.dataset_pid, fs)
 
     async def close(self):
         await self.client.close()

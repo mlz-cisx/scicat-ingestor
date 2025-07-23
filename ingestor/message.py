@@ -2,6 +2,10 @@ import json
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
+from datetime import datetime
+
+from .client import DataFile, CreateDatasetDto, CreateOrigDatablockDto, CreateSampleDto, CreateProposalDto
 
 
 class Event(StrEnum):
@@ -18,10 +22,10 @@ class Event(StrEnum):
 @dataclass(frozen=True)
 class File:
     name: str
-    path: str
+    path: Path
     dataroot: str
-    proposalpath: str
-    samplepath: str
+    proposalpath: Path
+    samplepath: Path
     size: int
     atime: str
     mtime: str
@@ -30,6 +34,46 @@ class File:
     uid: int
     gid: int
     inode: int
+
+    def __init__(
+        self,
+        name: str,
+        path: str,
+        dataroot: str,
+        samplepath: str,
+        size: int,
+        atime: str,
+        mtime: str,
+        ctime: str,
+        mode: int,
+        uid: int,
+        gid: int,
+        inode: int
+    ):
+        self.name = name
+        self.path = Path(path)
+        self.dataroot = Path(dataroot)
+        self.samplepath = Path(samplepath)
+        self.size = size
+        self.atime = atime
+        self.mtime = mtime
+        self.ctime = ctime
+        self.mode = int
+        self.uid = int
+        self.gid = int
+        self.inode = int
+
+    def as_datafile(self):
+        path = str(self.path.relative_to(self.samplepath))
+        return DataFile(
+            path=path,
+            size=self.size,
+            time=self.ctime,
+            chk=None,  # will be done by the uploader
+            uid=str(self.uid),
+            gid=str(self.gid),
+            perm=str(self.mode),
+        )
 
 
 @dataclass(frozen=True)
@@ -126,6 +170,74 @@ class Message:
             print(mapped)
             raise ValueError(f"Could not resolve mapping {mapping} with key {key}!")
         return ret
+
+    @property
+    def dataset_pid(self):
+        if self.event == Event.SCAN or self.event == Event.ENDSCAN:
+            return self.id
+        else:
+            return self.scanid
+
+    @property
+    def sourceFolder(self):
+        if self.fileinfos:
+            return self.fileinfos[0].proposalpath
+        else:
+            return "FIXME"
+
+    def get_dataset_dto(self):
+        return CreateDatasetDto(
+            type="raw",
+            owner="ingestor",
+            ownerGroup=self.propinfo.session,
+            accessGroups=[self.propinfo.session, self.propinfo.instrument],
+            sourceFolder=self.sourceFolder,
+            contactEmail="datasteward@mlz-garching.de",  # TODO
+            creationLocation="MLZ",  # TODO: instrument?
+            principalInvestigator=self.propinfo.mainproposer.name,
+            datasetName=self.name or "Scan",
+            creationTime=datetime.now().isoformat(),
+            pid=self.dataset_pid,
+            isPublished=False,
+            description="not available",
+            scientificMetadata=self.get_scientific_metadata(self),
+            runNumber=str(0),
+            sampleId=str(self.sample.id),
+            instrumentId=self.instrument,
+        )
+
+    def get_proposal_dto(self):
+        return CreateProposalDto(
+            ownerGroup=self.propinfo.session,
+            accessGroups=[self.propinfo.instrument],
+            proposalId=self.propinfo.proposal,
+            email=self.propinfo.mainproposer.email,
+            title=self.propinfo.title,
+        )
+
+    def get_sample_dto(self):
+        return CreateSampleDto(
+            sampleId=str(self.sample.id),
+            owner="ingestor",
+            ownerGroup="ingestor",
+            accessGroups=[],
+            instrumentGroup="",
+            description=self.sample.name,
+        )
+
+    def get_datafiles(self):
+        return [fileinfo.as_datafile() for fileinfo in self.fileinfos]
+
+    def get_datablock_dto(self):
+        return CreateOrigDatablockDto(
+            datasetId=self.dataset_pid,
+            ownerGroup=self.propinfo.session,
+            accessGroups=[self.propinfo.instrument],
+            instrumentGroup=self.propinfo.instrument,
+            chkAlg="sha256",
+            dataFileList=self.get_datafiles(),
+            size=sum(file.size for file in self.fileinfos),
+        )
 
 
 MESSAGES = {

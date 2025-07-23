@@ -35,14 +35,14 @@ class RmqClient:
         await self.channel.declare_queue(self.config.workqueue, durable=True)
         self.log.info("Queue for file copies is set up.")
 
-    async def queue_copies(self, dataset, files):
+    async def queue_copies(self, dataset_pid, files):
         if not self.enabled:
             return
         self.log.debug("Queueing the following files of dataset %s for copy: %s",
-                       dataset, files)
+                       dataset_pid, files)
         messages = [
             Message(
-                dataset_id=dataset.pid,
+                dataset_id=dataset_pid,
                 datablock_id=file[0],
                 filepath=file[1],
             )
