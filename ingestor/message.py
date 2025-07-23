@@ -20,7 +20,7 @@ class Event(StrEnum):
     ENDBLOCK = 'block.end'
 
 
-@dataclass(frozen=True)
+@dataclass  # (frozen=True), would need to use setattr for frozen to be true
 class File:
     name: str
     path: Path
@@ -41,6 +41,7 @@ class File:
         name: str,
         path: str,
         dataroot: str,
+        proposalpath: str,
         samplepath: str,
         size: int,
         atime: str,
@@ -54,6 +55,7 @@ class File:
         self.name = name
         self.path = Path(path)
         self.dataroot = Path(dataroot)
+        self.proposalpath = Path(proposalpath)
         self.samplepath = Path(samplepath)
         self.size = size
         self.atime = atime
@@ -182,7 +184,7 @@ class Message:
     @property
     def sourceFolder(self):
         if self.fileinfos:
-            return self.fileinfos[0].proposalpath
+            return str(self.fileinfos[0].proposalpath)
         else:
             return "FIXME"
 
@@ -201,7 +203,7 @@ class Message:
             pid=self.dataset_pid,
             isPublished=False,
             description="not available",
-            scientificMetadata=self.get_scientific_metadata(self),
+            #scientificMetadata=self.get_scientific_metadata(),
             runNumber=str(0),
             sampleId=str(self.sample.id),
             instrumentId=self.instrument,

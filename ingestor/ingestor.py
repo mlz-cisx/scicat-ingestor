@@ -176,10 +176,11 @@ class Ingestor(Backend):
         if datablocks is None or not msg.fileinfos:
             # no files in dataset yet or we don't have anything to add
             return
-        filepaths = [file.path for file in msg.fileinfos]
+        samplepath = msg.fileinfos[0].samplepath
+        filepaths = [str(file.path.relative_to(file.samplepath)) for file in msg.fileinfos]
         fs = [
-            (datablock._id, str(file.path))
-            for datablock in datablocks[:2]
+            (datablock._id, str(samplepath / file.path))
+            for datablock in datablocks[-2:]
             for file in datablock.dataFileList
             if file.path in filepaths
         ]
