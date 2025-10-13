@@ -31,6 +31,10 @@ class AuthStrategy(StrEnum):
     LDAP = "ldap"
 
 
+class PrecondFailed(RuntimeError):
+    """Precondition for patch request failed"""
+
+
 class SciCatClient:
     def __init__(self, config, log):
         self.log = log
@@ -67,16 +71,23 @@ class SciCatClient:
                 self.log.error("Error in post request to %s: %r", endpoint, await response.text())
         return None
 
-    async def _patch_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
+    async def _patch_endpoint(self, endpoint, response_type, request_data, since=None, headers=None, *args, **kwargs):
         self.log.debug('PATCH %s with %s expecting %s',
                        endpoint, request_data, response_type.__name__,)
+        if headers is None:
+            headers = {}
+        if since:
+            headers["If-Unmodified-Since"] = since
         async with self.session.patch(
-            self.config.url + endpoint, *args, json=to_dict(request_data), **kwargs,
+            self.config.url + endpoint, *args, json=to_dict(request_data),
+            headers=headers, **kwargs,
         ) as response:
             if 200 <= response.status < 300:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
                 self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
+            if response.status == 412:
+                raise PrecondFailed()
         return None
 
     async def _search(self, endpoint, response_type, filter=None):
@@ -121,11 +132,12 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def update_dataset(self, dataset_id, dataset_update):
+    async def update_dataset(self, dataset_id, dataset_update, since=None):
         return await self._patch_endpoint(
             f"/api/v3/datasets/{dataset_id}",
             Dataset,
             dataset_update,
+            since,
         )
 
     @ensure_logged_in
@@ -145,11 +157,12 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def update_datablock(self, datablock_id, datablock_update):
+    async def update_datablock(self, datablock_id, datablock_update, since=None):
         return await self._patch_endpoint(
             f"/api/v3/origdatablocks/{datablock_id}",
             OrigDataBlock,
             datablock_update,
+            since,
         )
 
     @ensure_logged_in

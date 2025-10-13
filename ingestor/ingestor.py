@@ -1,8 +1,9 @@
 import math
+import time
 
 import mlzlog
 
-from .client import SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto
+from .client import SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto, PrecondFailed
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
@@ -107,10 +108,17 @@ class Ingestor(Backend):
             await self._add_files_to_dataset(dataset, datablock, files)
 
         # Workaround for base filepath missing
-        ds = await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
-        if ds.sourceFolder == "FIXME" and ds and dataset.sourceFolder != "FIXME":
-            ds_patch = UpdateDatasetDto(sourceFolder=dataset.sourceFolder)
-            await self.client.update_dataset(ds.pid, ds_patch)
+        while True:
+            ds = await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
+            if ds and ds.sourceFolder == "FIXME" and dataset.sourceFolder != "FIXME":
+                ds_patch = UpdateDatasetDto(sourceFolder=dataset.sourceFolder)
+                try:
+                    await self.client.update_dataset(ds.pid, ds_patch, since=ds.updatedAt)
+                except PrecondFailed:
+                    time.sleep(0.05)
+                    continue
+                break
+            break
 
     async def _get_or_create_proposal(self, proposal):
         present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
@@ -129,34 +137,41 @@ class Ingestor(Backend):
 
     async def _add_files_to_dataset(self, dataset, datablock, files):
         self.log.info("Dataset %s already exists, adding files", dataset.pid)
-        datablock_from_scicat = await self.client.get_origdatablocks_for_dataset(dataset.pid)
-        if datablock_from_scicat and len(datablock_from_scicat[-1].dataFileList) < 200:
-            datablock_from_scicat = datablock_from_scicat[-1]
-        else:
-            datablock_from_scicat = await self._create_datablock(dataset, datablock)
-        if datablock_from_scicat is None or not datablock.dataFileList:
-            self.log.info("No new files to add.")
-            return
-        # patch with new files
-        prev = {f.path: f for f in datablock_from_scicat.dataFileList}
-        curr = {f.path: f for f in files}
-        newfiles = []
-        newsize = 0
-        new = 0
-        todos = set(f.path for f in files).union(set(prev.keys()))
-        for file in todos:
-            if file in curr and file in prev:
-                newfiles.append(curr[file])
-                newsize += curr[file].size
-            elif file in curr:
-                newfiles.append(curr[file])
-                newsize += curr[file].size
-                new += 1
-            elif file in prev:
-                newfiles.append(prev[file])
-                newsize += prev[file].size
-        update = UpdateOrigDataBlockDto(size=newsize, dataFileList=newfiles)
-        await self.client.update_datablock(datablock_from_scicat._id, update)
+        while True:
+            datablock_from_scicat = await self.client.get_origdatablocks_for_dataset(dataset.pid)
+            if datablock_from_scicat and len(datablock_from_scicat[-1].dataFileList) < 200:
+                datablock_from_scicat = datablock_from_scicat[-1]
+            else:
+                datablock_from_scicat = await self._create_datablock(dataset, datablock)
+            if datablock_from_scicat is None or not datablock.dataFileList:
+                self.log.info("No new files to add.")
+                return
+            # patch with new files
+            prev = {f.path: f for f in datablock_from_scicat.dataFileList}
+            curr = {f.path: f for f in files}
+            newfiles = []
+            newsize = 0
+            new = 0
+            todos = set(f.path for f in files).union(set(prev.keys()))
+            for file in todos:
+                if file in curr and file in prev:
+                    newfiles.append(curr[file])
+                    newsize += curr[file].size
+                elif file in curr:
+                    newfiles.append(curr[file])
+                    newsize += curr[file].size
+                    new += 1
+                elif file in prev:
+                    newfiles.append(prev[file])
+                    newsize += prev[file].size
+            update = UpdateOrigDataBlockDto(size=newsize, dataFileList=newfiles)
+            try:
+                await self.client.update_datablock(datablock_from_scicat._id, update,
+                                                   since=datablock_from_scicat.updatedAt)
+            except PrecondFailed:
+                time.sleep(0.05)
+                continue
+            break
         if new:
             self.log.info("Added %d new files (%db)", new, newsize - datablock.size)
         else:
