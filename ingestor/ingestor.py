@@ -14,6 +14,7 @@ class Ingestor(Backend):
         self.log = log
         self.client = SciCatClient(cfg.sc, mlzlog.getLogger("client"))
         self.workqueue = RmqClient(cfg.rmq, mlzlog.getLogger("workqueue"))
+        self.source_folder_host = cfg.source_folder_host
 
     async def setup(self):
         await self.workqueue.setup()
@@ -33,6 +34,7 @@ class Ingestor(Backend):
 
         dataset = msg.get_dataset_dto()
         dataset.scientificMetadata = self.get_scientific_metadata(msg)
+        dataset.sourceFolderHost = self.source_folder_host
         await self._upload(dataset, msg.get_datablock_dto(), msg.get_proposal_dto(),
                            msg.get_datafiles(), msg.get_sample_dto())
         await self._queue_filecopies(msg)

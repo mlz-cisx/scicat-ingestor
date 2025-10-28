@@ -41,6 +41,7 @@ class SciCatConfig:
 class Config:
     rmq: RabbitMQConfig
     sc: SciCatConfig
+    source_folder_host: str
 
 
 def get_config():
@@ -57,6 +58,9 @@ def get_config():
             f"Argument {auth_strategy!r} is not a valid authentication strategy. "
             f"Use 'login' or 'ldap'"
         ) from e
+    sfh = os.environ.get('SOURCE_FOLDER_HOST')
+    if not sfh:
+        raise ValueError('No Source folder host configured')
     sc_user = os.environ.get("SCICAT_USER")
     sc_pw = os.environ.get("SCICAT_PASSWORD")
     sc = SciCatConfig(sc_url, auth_strategy, sc_user, sc_pw)
@@ -78,7 +82,7 @@ def get_config():
     rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT", 5672))
     rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_queue_port, rmq_vhost, rmq_stream, rmq_user,
                          rmq_pw, rmq_workqueue)
-    return Config(rmq, sc)
+    return Config(rmq, sc, sfh)
 
 
 async def _main():
