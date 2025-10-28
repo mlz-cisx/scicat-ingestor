@@ -131,10 +131,21 @@ class Message:
         self.scanid = content["scanid"] if content["scanid"] != "None" else None
         self.name = content["name"] or ""
         self.event = Event(content["event"])
+        self.dataroot = Path(content["dataroot"])
+        self.proposalpath = Path(content["proposalpath"])
+        self.samplepath = Path(content["samplepath"])
         self.creation_timestamp = content["creation_timestamp"]
         files = []
         for file in content["fileinfos"]:
-            files.append(File(**file["stat"], **{k: file[k] for k in file if k != "stat"}))
+            files.append(
+                File(
+                    dataroot=self.dataroot,
+                    proposalpath=self.proposalpath,
+                    samplepath=self.samplepath,
+                    **file["stat"],
+                    **{k: file[k] for k in file if k != "stat"}
+                )
+            )
         self.fileinfos = files
         mainproposer = User(**content["propinfo"]["mainproposer"])
         self.propinfo = Proposal(
@@ -181,20 +192,13 @@ class Message:
         else:
             return self.scanid
 
-    @property
-    def sourceFolder(self):
-        if self.fileinfos:
-            return str(self.fileinfos[0].proposalpath)
-        else:
-            return "FIXME"
-
     def get_dataset_dto(self):
         return CreateDatasetDto(
             type="raw",
             owner="ingestor",
             ownerGroup=self.propinfo.session,
             accessGroups=[self.propinfo.session, self.propinfo.instrument],
-            sourceFolder=self.sourceFolder,
+            sourceFolder=self.samplepath,
             contactEmail="datasteward@mlz-garching.de",  # TODO
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=self.propinfo.mainproposer.name,

@@ -79,7 +79,7 @@ class Ingestor(Backend):
         return smd
 
     def _map_unit(self, unit):
-        return unit.replace("A-1", "angstrom^-1") #.replace("K", "kelvin")
+        return unit.replace("A-1", "angstrom^-1")  # .replace("K", "kelvin")
 
     async def _upload(self, dataset, datablock, proposal, files, sample):
         # create proposal if not present
@@ -106,19 +106,6 @@ class Ingestor(Backend):
         else:
             # modify existing
             await self._add_files_to_dataset(dataset, datablock, files)
-
-        # Workaround for base filepath missing
-        while True:
-            ds = await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
-            if ds and ds.sourceFolder == "FIXME" and dataset.sourceFolder != "FIXME":
-                ds_patch = UpdateDatasetDto(sourceFolder=dataset.sourceFolder)
-                try:
-                    await self.client.update_dataset(ds.pid, ds_patch, since=ds.updatedAt)
-                except PrecondFailed:
-                    time.sleep(0.05)
-                    continue
-                break
-            break
 
     async def _get_or_create_proposal(self, proposal):
         present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)
