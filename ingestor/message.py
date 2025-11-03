@@ -1,9 +1,9 @@
 import json
-from collections import namedtuple
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import NamedTuple
 
 from .client import (
     CreateDatasetDto,
@@ -55,7 +55,7 @@ class File:
         mode: int,
         uid: int,
         gid: int,
-        inode: int
+        inode: int,
     ):
         self.name = name
         self.path = Path(path)
@@ -123,11 +123,15 @@ class Counters:
     number: int
 
 
-Stats = namedtuple("Stats", ["mean", "stddev", "min", "max"])
+class Stats(NamedTuple):
+    mean: float
+    stddev: float
+    min: float
+    max: float
 
 
 class Message:
-    def __init__(self, content, log):
+    def __init__(self, content, _log):
         # TODO: more fault tolerant, check version, eval mapping
 
         self.version = content["version"]
@@ -140,17 +144,15 @@ class Message:
         self.proposalpath = Path(content["proposalpath"])
         self.samplepath = Path(content["samplepath"])
         self.creation_timestamp = content["creation_timestamp"]
-        files = []
-        for file in content["fileinfos"]:
-            files.append(
-                File(
-                    dataroot=self.dataroot,
-                    proposalpath=self.proposalpath,
-                    samplepath=self.samplepath,
-                    **file["stat"],
-                    **{k: file[k] for k in file if k != "stat"},
-                )
+        files = [
+            File(
+                dataroot=self.dataroot,
+                proposalpath=self.proposalpath,
+                samplepath=self.samplepath,
+                **file["stat"],
+                **{k: file[k] for k in file if k != "stat"},
             )
+            for file in content["fileinfos"]]
         self.fileinfos = files
         mainproposer = User(**content["propinfo"]["mainproposer"])
         self.propinfo = Proposal(
@@ -186,16 +188,14 @@ class Message:
         mapped = msg["metadata"].get(msg["mapping"].get(mapping))
         ret = mapped.get(key, {}).get("value")
         if ret is None:
-            print(mapped)
             raise ValueError(f"Could not resolve mapping {mapping} with key {key}!")
         return ret
 
     @property
     def dataset_pid(self):
-        if self.event == Event.SCAN or self.event == Event.ENDSCAN:
+        if self.event in {Event.SCAN, Event.ENDSCAN}:
             return self.id
-        else:
-            return self.scanid
+        return self.scanid
 
     def get_dataset_dto(self):
         return CreateDatasetDto(
@@ -208,7 +208,7 @@ class Message:
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=self.propinfo.mainproposer.name,
             datasetName=self.name or "Scan",
-            creationTime=datetime.now().isoformat(),
+            creationTime=datetime.now(tz=UTC).isoformat(),
             pid=self.dataset_pid,
             isPublished=False,
             description="not available",
@@ -261,10 +261,10 @@ def parse_message(raw, log):
     try:
         content = json.loads(raw.body.decode("utf-8"))
     except UnicodeDecodeError:
-        log.error("Could not decode RabbitMQ message!")
+        log.error("Could not decode RabbitMQ message!")  # noqa: TRY400
         return None
     except json.JSONDecodeError as e:
-        log.error("Could not parse RabbitMQ message as json: %r", e)
+        log.error("Could not parse RabbitMQ message as json: %r", e)  # noqa: TRY400
         return None
     msg_version = content.get("version")
     msg_class = MESSAGES.get(msg_version)

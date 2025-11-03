@@ -3,7 +3,7 @@ import time
 
 import mlzlog
 
-from .client import PrecondFailed, SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto
+from .client import PrecondFailed, SciCatClient, UpdateOrigDataBlockDto
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
@@ -22,11 +22,11 @@ class Ingestor(Backend):
     async def on_message(self, msg_raw, message_context):
         try:
             await self._on_message(msg_raw, message_context)
-        except Exception as e:
-            self.log.exception("Uncaught error in on_message: %r", e)
+        except Exception:
+            self.log.exception("Uncaught error in on_message")
             raise
 
-    async def _on_message(self, msg_raw, message_context):
+    async def _on_message(self, msg_raw, _message_context):
         self.log.info("processing message:")
         msg: Message = parse_message(msg_raw, self.log)
         self.log.info("message id is %s of type %s", msg.id, msg.event)
@@ -141,7 +141,7 @@ class Ingestor(Backend):
             newfiles = []
             newsize = 0
             new = 0
-            todos = set(f.path for f in files).union(set(prev.keys()))
+            todos = {f.path for f in files}.union(set(prev.keys()))
             for file in todos:
                 if file in curr and file in prev:
                     newfiles.append(curr[file])
@@ -155,7 +155,7 @@ class Ingestor(Backend):
                     newsize += prev[file].size
             update = UpdateOrigDataBlockDto(size=newsize, dataFileList=newfiles)
             try:
-                await self.client.update_datablock(datablock_from_scicat._id, update,
+                await self.client.update_datablock(datablock_from_scicat._id, update,  # noqa: SLF001
                                                    since=datablock_from_scicat.updatedAt)
             except PrecondFailed:
                 time.sleep(0.05)
@@ -183,7 +183,7 @@ class Ingestor(Backend):
         samplepath = msg.fileinfos[0].samplepath
         filepaths = [str(file.path.relative_to(file.samplepath)) for file in msg.fileinfos]
         fs = [
-            (datablock._id, str(samplepath / file.path))
+            (datablock._id, str(samplepath / file.path))  # noqa: SLF001
             for datablock in datablocks[-2:]
             for file in datablock.dataFileList
             if file.path in filepaths

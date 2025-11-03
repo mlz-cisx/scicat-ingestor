@@ -1,7 +1,6 @@
 import json
-import os
 from dataclasses import asdict, dataclass, is_dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 import aiohttp
@@ -12,7 +11,7 @@ def to_dict(c):
     return asdict(c, dict_factory=lambda d: {k: v for k, v in d if v is not None})
 
 
-def from_response(response_type, data, multiple=False):
+def from_response(response_type, data, *, multiple=False):
     if not data:
         # if there are no results, some endpoints don't give an empty list, but
         # an empty body
@@ -32,7 +31,7 @@ class AuthStrategy(StrEnum):
 
 
 class PrecondFailed(RuntimeError):
-    """Precondition for patch request failed"""
+    """Precondition for patch request failed."""
 
 
 class SciCatClient:
@@ -40,9 +39,10 @@ class SciCatClient:
         self.log = log
         self.session = aiohttp.ClientSession()
         self.config = config
-        self.expires = datetime.now()
+        self.expires = datetime.now(tz=UTC)
 
-    async def _get_endpoint(self, endpoint, response_type, *args, multiple=False, not_found_ok=False, **kwargs):
+    async def _get_endpoint(self, endpoint, response_type, *args,
+                            multiple=False, not_found_ok=False, **kwargs):
         self.log.debug("GET %s expecting %s (multiple=%s)",
                        endpoint, response_type.__name__, multiple)
         async with self.session.get(
@@ -51,8 +51,9 @@ class SciCatClient:
             if 200 <= response.status < 300:
                 try:
                     return from_response(response_type, await response.json(), multiple)
-                except TypeError as e:
-                    self.log.error("Error in get request to %s: %r with %s", endpoint, e, await response.json())
+                except TypeError:
+                    self.log.exception("Error in get request to %s with %s",
+                                       endpoint, await response.json())
             if response.status >= 400:
                 if not_found_ok and response.status == 404:
                     return None
@@ -71,7 +72,8 @@ class SciCatClient:
                 self.log.error("Error in post request to %s: %r", endpoint, await response.text())
         return None
 
-    async def _patch_endpoint(self, endpoint, response_type, request_data, since=None, headers=None, *args, **kwargs):
+    async def _patch_endpoint(self, endpoint, response_type, request_data,
+                              since=None, headers=None, *args, **kwargs):
         self.log.debug("PATCH %s with %s expecting %s",
                        endpoint, request_data, response_type.__name__)
         if headers is None:
@@ -90,7 +92,7 @@ class SciCatClient:
                 raise PrecondFailed
         return None
 
-    async def _search(self, endpoint, response_type, filter=None):
+    async def _search(self, endpoint, response_type, filter=None):  # noqa: A002
         return await self._get_endpoint(endpoint, response_type, multiple=True,
                                         params={"filter": json.dumps(filter)})
 
@@ -107,7 +109,7 @@ class SciCatClient:
 
     def ensure_logged_in(f):
         async def inner(self, *args, **kwargs):
-            if self.expires.timestamp() < datetime.now().timestamp():
+            if self.expires.timestamp() < datetime.now(tz=UTC).timestamp():
                 # we have to refresh the token
                 self.log.debug("Initial authentication required or previous "
                                "is expired, logging in")
@@ -124,7 +126,7 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_dataset_by_pid(self, pid, not_found_ok=False):
+    async def get_dataset_by_pid(self, pid, *, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/datasets/{pid}",
             Dataset,
@@ -174,7 +176,7 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_proposal_by_pid(self, pid, not_found_ok=False):
+    async def get_proposal_by_pid(self, pid, *, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/proposals/{pid}",
             Proposal,
@@ -182,14 +184,14 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_instrument_by_pid(self, id):
+    async def get_instrument_by_pid(self, pid):
         return await self._get_endpoint(
-            f"/api/v3/instruments/{id}",
+            f"/api/v3/instruments/{pid}",
             Instrument,
         )
 
     @ensure_logged_in
-    async def search_instruments(self, filter=None):
+    async def search_instruments(self, *, filter=None):  # noqa: A002
         return await self._search(
             "/api/v3/instruments",
             Instrument,
@@ -214,7 +216,7 @@ class SciCatClient:
         )
 
     @ensure_logged_in
-    async def get_sample_by_id(self, sampleId, not_found_ok=False):
+    async def get_sample_by_id(self, sampleId, *, not_found_ok=False):
         return await self._get_endpoint(
             f"/api/v3/samples/{sampleId}",
             Sample,
@@ -232,7 +234,7 @@ class CredentialsDto:
 
     def __str__(self):
         # hide password in str formating for debug log
-        return f"CredentialsDto(username={self.username}, password=\"***\")"
+        return f'CredentialsDto(username={self.username}, password="***")'
 
 
 @dataclass
@@ -419,6 +421,7 @@ class UpdateDatasetDto:
     usedSoftware: list[str] | None = None
     # jobParameters: ???
     jobLogData: str | None = None
+
 
 @dataclass
 class DataFile:
