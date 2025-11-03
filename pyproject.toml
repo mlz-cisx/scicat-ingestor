@@ -8,13 +8,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scicat-ingestor"
-description = "scicat ingestor service"
-#readme = "README.rst"
-#license.file = "LICENSE"
+dynamic = ["version"]
 authors = [
-    { name = "Bjoern Pedersen", email = "bjoern.pedersen@frm2.tum.de" }
+    { name = "Bjoern Pedersen", email = "bjoern.pedersen@frm2.tum.de" },
+    { name = "Alexander Zaft", email = "a.zaft@fz-juelich.de" },
 ]
+license = {text = ""}  # TODO!
+description = "scicat ingestor service"
+readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
    "mlzlog",
    "dateutils",
@@ -24,9 +33,6 @@ dependencies = [
    "aio-pika",
    "dacite",
   ]
-dynamic = [
-    "version",
-]
 
 [project.scripts]
 ingestor = "ingestor.main:main"
