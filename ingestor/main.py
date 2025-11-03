@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 
 from .client import AuthStrategy
 from .consumer import RabbitConsumer
-from .ingestor import \
-    Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
+from .ingestor import Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)

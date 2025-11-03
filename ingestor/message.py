@@ -5,8 +5,13 @@ from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
-from .client import (CreateDatasetDto, CreateOrigDatablockDto,
-                     CreateProposalDto, CreateSampleDto, DataFile)
+from .client import (
+    CreateDatasetDto,
+    CreateOrigDatablockDto,
+    CreateProposalDto,
+    CreateSampleDto,
+    DataFile,
+)
 
 
 class Event(StrEnum):

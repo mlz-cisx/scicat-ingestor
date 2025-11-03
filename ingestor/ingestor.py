@@ -3,7 +3,7 @@ import time
 
 import mlzlog
 
-from .client import SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto, PrecondFailed
+from .client import PrecondFailed, SciCatClient, UpdateDatasetDto, UpdateOrigDataBlockDto
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
