@@ -44,6 +44,16 @@ include = ["ingestor"]
 [tool.setuptools_scm]
 write_to = "ingestor/version.py"
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN", "ARG002", "BLE001", "D1", "D203",
+          "D213", "EM1", "ERA", "E741", "FIX", "N8",
+           "PLR09", "PLR2004", "T201", "TD", "TRY003",
+           "TRY301"]
+mccabe.max-complexity = 35
 
 [tool.pylint.main]
 # Analyse import fallback blocks. This can be used to support both Python 2 and 3

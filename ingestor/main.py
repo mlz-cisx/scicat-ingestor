@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import asyncio
 import os
 import signal
@@ -46,9 +44,9 @@ class Config:
 
 def get_config():
     load_dotenv()
-    sc_url = os.environ.get('SCICAT_URL')
+    sc_url = os.environ.get("SCICAT_URL")
     if not sc_url:
-        raise ValueError('No SciCat url configured')
+        raise ValueError("No SciCat url configured")
     sc_url = sc_url.rstrip("/")
     try:
         auth_strategy = os.environ.get("SCICAT_AUTH_STRATEGY", "login")
@@ -56,11 +54,11 @@ def get_config():
     except ValueError as e:
         raise ValueError(
             f"Argument {auth_strategy!r} is not a valid authentication strategy. "
-            f"Use 'login' or 'ldap'"
+            f"Use 'login' or 'ldap'",
         ) from e
-    sfh = os.environ.get('SOURCE_FOLDER_HOST')
+    sfh = os.environ.get("SOURCE_FOLDER_HOST")
     if not sfh:
-        raise ValueError('No Source folder host configured')
+        raise ValueError("No Source folder host configured")
     sc_user = os.environ.get("SCICAT_USER")
     sc_pw = os.environ.get("SCICAT_PASSWORD")
     sc = SciCatConfig(sc_url, auth_strategy, sc_user, sc_pw)
@@ -106,5 +104,5 @@ async def _main():
 
 
 def main():
-    mlzlog.initLogging("ingest", rootlevel='info', logdir=None)  # only to console
+    mlzlog.initLogging("ingest", rootlevel="info", logdir=None)  # only to console
     asyncio.run(_main())

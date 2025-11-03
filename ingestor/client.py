@@ -43,7 +43,7 @@ class SciCatClient:
         self.expires = datetime.now()
 
     async def _get_endpoint(self, endpoint, response_type, *args, multiple=False, not_found_ok=False, **kwargs):
-        self.log.debug('GET %s expecting %s (multiple=%s)',
+        self.log.debug("GET %s expecting %s (multiple=%s)",
                        endpoint, response_type.__name__, multiple)
         async with self.session.get(
             self.config.url + endpoint, *args, **kwargs,
@@ -60,8 +60,8 @@ class SciCatClient:
         return None
 
     async def _post_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
-        self.log.debug('POST %s with %s expecting %s',
-                       endpoint, request_data, response_type.__name__,)
+        self.log.debug("POST %s with %s expecting %s",
+                       endpoint, request_data, response_type.__name__)
         async with self.session.post(
             self.config.url + endpoint, *args, json=to_dict(request_data), **kwargs,
         ) as response:
@@ -72,8 +72,8 @@ class SciCatClient:
         return None
 
     async def _patch_endpoint(self, endpoint, response_type, request_data, since=None, headers=None, *args, **kwargs):
-        self.log.debug('PATCH %s with %s expecting %s',
-                       endpoint, request_data, response_type.__name__,)
+        self.log.debug("PATCH %s with %s expecting %s",
+                       endpoint, request_data, response_type.__name__)
         if headers is None:
             headers = {}
         if since:
@@ -87,7 +87,7 @@ class SciCatClient:
             if response.status >= 400:
                 self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
             if response.status == 412:
-                raise PrecondFailed()
+                raise PrecondFailed
         return None
 
     async def _search(self, endpoint, response_type, filter=None):

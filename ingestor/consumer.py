@@ -9,10 +9,10 @@ class Backend:
         """Called before the first message."""
 
     async def on_message(self, msg_raw, message_context):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     async def close(self):
-        """Close any conenctions that are needed"""
+        """Close any conenctions that are needed."""
 
 
 SUBNAME = "scicat-ingestor"
@@ -32,7 +32,7 @@ class RabbitConsumer:
     async def get_offset(self):
         try:
             return await self.consumer.query_offset(
-                stream=self.cfg.stream, subscriber_name="scicat-ingestor"
+                stream=self.cfg.stream, subscriber_name="scicat-ingestor",
             )
         except rstream.OffsetNotFound:
             return 1
@@ -99,7 +99,7 @@ class RabbitConsumer:
                 decoder=rstream.amqp_decoder,
                 offset_specification=rstream.ConsumerOffsetSpecification(
                     # rstream.OffsetType.OFFSET, offset
-                    rstream.OffsetType.NEXT, None
+                    rstream.OffsetType.NEXT, None,
                 ),
             )
             await self.consumer.run()

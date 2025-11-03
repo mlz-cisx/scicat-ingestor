@@ -46,7 +46,7 @@ class Ingestor(Backend):
             unit = msg.metadata.get(dev, {}).get("value", {}).get("unit", "")
             unit = self._map_unit(unit)
             for key, value in stats._asdict().items():
-                if key == 'stddev' and (stats.stddev == 0.0 or math.isinf(stats.stddev)):
+                if key == "stddev" and (stats.stddev == 0.0 or math.isinf(stats.stddev)):
                     v = 0.0
                 else:
                     v = value
@@ -72,7 +72,7 @@ class Ingestor(Backend):
                         smd[cat_name] = {"value": val[0], "unit": unit}
                     else:
                         # handle mixed type devices that return a str for some settings
-                        smd[cat_name] = {"value": str(val[0]), "unit":  ''}
+                        smd[cat_name] = {"value": str(val[0]), "unit":  ""}
                 elif isinstance(val, str):
                     smd[cat_name] = {"value": val, "unit": ""}
                 else:

@@ -10,14 +10,14 @@ from .client import (CreateDatasetDto, CreateOrigDatablockDto,
 
 
 class Event(StrEnum):
-    POINT = 'point'
-    UNKNOWN = 'unknown'
-    SCAN = 'scan'
-    SUBSCAN = 'subscan'
-    BLOCK = 'block'
-    ENDSCAN = 'scan.end'
-    ENDSUBSCAN = 'subscan.end'
-    ENDBLOCK = 'block.end'
+    POINT = "point"
+    UNKNOWN = "unknown"
+    SCAN = "scan"
+    SUBSCAN = "subscan"
+    BLOCK = "block"
+    ENDSCAN = "scan.end"
+    ENDSUBSCAN = "subscan.end"
+    ENDBLOCK = "block.end"
 
 
 @dataclass  # (frozen=True), would need to use setattr for frozen to be true
@@ -118,7 +118,7 @@ class Counters:
     number: int
 
 
-Stats = namedtuple('Stats', ['mean', 'stddev', 'min', 'max'])
+Stats = namedtuple("Stats", ["mean", "stddev", "min", "max"])
 
 
 class Message:
@@ -143,7 +143,7 @@ class Message:
                     proposalpath=self.proposalpath,
                     samplepath=self.samplepath,
                     **file["stat"],
-                    **{k: file[k] for k in file if k != "stat"}
+                    **{k: file[k] for k in file if k != "stat"},
                 )
             )
         self.fileinfos = files
@@ -207,7 +207,7 @@ class Message:
             pid=self.dataset_pid,
             isPublished=False,
             description="not available",
-            #scientificMetadata=self.get_scientific_metadata(),
+            # scientificMetadata=self.get_scientific_metadata(),
             runNumber=str(0),
             sampleId=str(self.sample.id),
             instrumentId=self.instrument,
@@ -264,7 +264,7 @@ def parse_message(raw, log):
     msg_version = content.get("version")
     msg_class = MESSAGES.get(msg_version)
     if msg_class is None:
-        log.error("Unknown message version %r! (should be one of: )",
-                  msg_version, ', '.join(MESSAGES.keys()))
+        log.error("Unknown message version %r! (should be one of: %s)",
+                  msg_version, ", ".join(MESSAGES.keys()))
         return None
     return msg_class(content, log)
