@@ -1,6 +1,7 @@
 import asyncio
 import os
 import signal
+import sys
 from dataclasses import dataclass
 
 import mlzlog
@@ -82,6 +83,16 @@ def get_config():
     return Config(rmq, sc, sfh)
 
 
+def error_fallback(_loop, context):
+    """Fallback exception handler."""
+    msg = "Uncaught exception in Task"
+    if (f := context.get("future")) is not None:
+        funcname = f.get_coro().__qualname__
+        msg += f' "{f.get_name()}" running function {funcname}()'
+    mlzlog.log.error(msg, exc_info=context.get("exception"))
+    sys.exit(1)
+
+
 async def _main():
     cfg = get_config()
 
@@ -93,6 +104,7 @@ async def _main():
             task.cancel()
     loop.add_signal_handler(signal.SIGINT, stop_everything, "SIGINT")
     loop.add_signal_handler(signal.SIGTERM, stop_everything, "SIGTERM")
+    loop.set_exception_handler(error_fallback)
 
     ingestor = Ingestor(cfg, mlzlog.getLogger("ingestor"))
     consumer = RabbitConsumer(cfg.rmq, ingestor, mlzlog.getLogger("consumer"))
