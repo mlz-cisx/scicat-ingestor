@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from datetime import UTC, datetime
 
 import rstream
 
@@ -27,10 +28,22 @@ class RabbitConsumer:
         self.log = log
         self.backend = backend
         self.consumer = None
+        self.dlx_producer = None
 
     async def on_message(self, msg_raw, message_context):
-        await self.backend.on_message(msg_raw, message_context)
-        # await self.store_offset()  # store after every message right now
+        try:
+            await self.backend.on_message(msg_raw, message_context)
+
+        except Exception as e:
+            self.log.exception("Error processing message")
+            await self.publish_to_dls(msg_raw, message_context, e)
+
+        finally:
+            await self.consumer.store_offset(
+                stream=self.cfg.stream,
+                subscriber_name=SUBNAME,
+                offset=message_context.offset,
+            )  # store after every message right now
 
     async def get_offset(self):
         try:
@@ -65,7 +78,8 @@ class RabbitConsumer:
                         sys.exit(-1)
                     backoff = min(backoff * 2, 60)
                     count += 1
-                    self.log.warning("Reconnecting failed: %r (retrying in %ds)", ex, backoff)
+                    self.log.warning(
+                        "Reconnecting failed: %r (retrying in %ds)", ex, backoff)
                     await asyncio.sleep(backoff)
 
     async def run(self):
@@ -85,24 +99,34 @@ class RabbitConsumer:
                 on_close_handler=self.on_connection_closed,
                 load_balancer_mode=True,  # TODO: does not work without, what it do?
             )
+
+            self.dlx_producer = rstream.Producer(
+                host=r.host,
+                port=r.port,
+                vhost=r.vhost,
+                username=r.user,
+                password=r.pw,
+            )
             try:
                 await self.consumer.start()
+                await self.dlx_producer.start()
             except Exception:
                 self.log.exception("Connecting to RabbitMQ failed")
             try:
                 await self.backend.setup()
             except Exception:
                 self.log.exception("Error in setup of backend")
-            # offset = await self.get_offset()
-            self.log.info("consumer started, subscribing to %s as %s", r.stream, SUBNAME)
+            offset = await self.get_offset()
+            self.log.info(
+                "consumer started, subscribing to %s as %s", r.stream, SUBNAME)
             await self.consumer.subscribe(
                 stream=r.stream,
                 subscriber_name=SUBNAME,  # TODO: from cfg or static?
                 callback=self.on_message,
                 decoder=rstream.amqp_decoder,
                 offset_specification=rstream.ConsumerOffsetSpecification(
-                    # rstream.OffsetType.OFFSET, offset
-                    rstream.OffsetType.NEXT, None,
+                    rstream.OffsetType.OFFSET, offset,
+                    # rstream.OffsetType.NEXT, None
                 ),
             )
             await self.consumer.run()
@@ -110,4 +134,29 @@ class RabbitConsumer:
             self.log.info("shutting down")
             if self.consumer:
                 await self.consumer.close()
+            if self.dlx_producer:
+                await self.dlx_producer.close()
             await self.backend.close()
+
+    async def publish_to_dls(self, msg_raw, message_context, error):
+        """Publish failed message to dead-letter stream."""
+        if self.dlx_producer is None:
+            self.log.error(
+                "Producer not initialized, cannot publish to dead letter stream")
+            return
+        try:
+            message = rstream.AMQPMessage(
+                body=msg_raw,
+                application_properties={
+                    "x-error": str(error),
+                    "x-failed-at": datetime.now(tz=UTC).isoformat(),
+                    "x-original-offset": message_context.offset,
+                },
+            )
+            await self.dlx_producer.send(
+                stream=self.cfg.dlx_stream,
+                message=message,
+            )
+            self.log.info("Published message to DLX stream")
+        except Exception:
+            self.log.exception("Failed to publish message to DLX stream")

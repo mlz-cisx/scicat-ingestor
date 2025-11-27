@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 
 from .client import AuthStrategy
 from .consumer import RabbitConsumer
-from .ingestor import Ingestor  # TODO: configurable to reuse the rabbitmq logic part?
+
+# TODO: configurable to reuse the rabbitmq logic part?
+from .ingestor import Ingestor
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -25,6 +27,7 @@ class RabbitMQConfig:
     user: str
     pw: str
     workqueue: str | None = None
+    dlx_stream: str | None = None
 
 
 @dataclass
@@ -78,8 +81,9 @@ def get_config():
         raise ValueError("No RabbitMQ password configured!")
     rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
     rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT", "5672"))
+    rmq_dlx_stream = os.environ.get("RMQ_DLX_STREAM")
     rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_queue_port, rmq_vhost, rmq_stream, rmq_user,
-                         rmq_pw, rmq_workqueue)
+                         rmq_pw, rmq_workqueue, rmq_dlx_stream)
     return Config(rmq, sc, sfh)
 
 
@@ -115,5 +119,6 @@ async def _main():
 
 
 def main():
-    mlzlog.initLogging("ingest", rootlevel="info", logdir=None)  # only to console
+    mlzlog.initLogging("ingest", rootlevel="info",
+                       logdir=None)  # only to console
     asyncio.run(_main())
