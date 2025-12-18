@@ -203,7 +203,7 @@ class Message:
             owner="ingestor",
             ownerGroup=self.propinfo.session,
             accessGroups=[self.propinfo.session, self.propinfo.instrument],
-            sourceFolder=self.samplepath,
+            sourceFolder=str(self.samplepath) or None,
             contactEmail="datasteward@mlz-garching.de",  # TODO
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=self.propinfo.mainproposer.name,
