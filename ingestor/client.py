@@ -50,7 +50,7 @@ class SciCatClient:
         ) as response:
             if 200 <= response.status < 300:
                 try:
-                    return from_response(response_type, await response.json(), multiple)
+                    return from_response(response_type, await response.json(), multiple=multiple)
                 except TypeError:
                     self.log.exception("Error in get request to %s with %s",
                                        endpoint, await response.json())
