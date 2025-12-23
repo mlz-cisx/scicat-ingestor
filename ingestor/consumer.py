@@ -35,23 +35,29 @@ class RabbitConsumer:
             await self.backend.on_message(msg_raw, message_context)
 
         except Exception as e:
-            self.log.exception("Error processing message")
-            await self.publish_to_dls(msg_raw, message_context, e)
+            try:
+                self.log.exception(
+                    "Error processing message, moving message to DLX")
+                await self.publish_to_dls(msg_raw, message_context, e)
+            except Exception as e:
+                self.log.exception(
+                    "Failed to process AND failed to DLX. Message will NOT be acknowledged!")
+                raise e
 
-        finally:
-            await self.consumer.store_offset(
-                stream=self.cfg.stream,
-                subscriber_name=SUBNAME,
-                offset=message_context.offset,
-            )  # store after every message right now
+        await self.consumer.store_offset(
+            stream=self.cfg.stream,
+            subscriber_name=SUBNAME,
+            offset=message_context.offset,
+        )  # store after every message right now
 
     async def get_offset(self):
         try:
-            return await self.consumer.query_offset(
-                stream=self.cfg.stream, subscriber_name="scicat-ingestor",
+            last_offset = await self.consumer.query_offset(
+                stream=self.cfg.stream, subscriber_name=SUBNAME,
             )
+            return last_offset + 1
         except rstream.OffsetNotFound:
-            return 1
+            return 0
         except rstream.StreamDoesNotExist as e:
             raise ValueError("invalid stream name") from e
 
@@ -143,7 +149,8 @@ class RabbitConsumer:
         if self.dlx_producer is None:
             self.log.error(
                 "Producer not initialized, cannot publish to dead letter stream")
-            return
+            raise RuntimeError(
+                "Producer not initialized, cannot publish to dead letter stream")
         try:
             message = rstream.AMQPMessage(
                 body=msg_raw,
@@ -158,5 +165,6 @@ class RabbitConsumer:
                 message=message,
             )
             self.log.info("Published message to DLX stream")
-        except Exception:
+        except Exception as e:
             self.log.exception("Failed to publish message to DLX stream")
+            raise e
