@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
    "mlzlog",
    "dateutils",
-   "rstream>=0.20.5",
+   "rstream>=0.20.5,<0.40.0",
    "python-dotenv",
    "aiohttp",
    "aio-pika",
