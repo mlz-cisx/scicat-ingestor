@@ -1,8 +1,60 @@
 import asyncio
-import sys
+import random
 from datetime import UTC, datetime
 
 import rstream
+from rstream.recovery import RecoveryStrategy
+
+from .util import stop_everything
+
+
+class BackoffStrategy(RecoveryStrategy):
+    """Backoff and try to reconnect.
+
+    Modified BackOffRecoveryStrategy that stops ingestor execution when max_tries is reached
+    instead of just giving up.
+    """
+
+    def __init__(self, log, max_retries=10, max_wait=50, jitter=2):
+        super().__init__(enable=True, max_retries=max_retries)
+        self.log = log
+        self.max_wait = max_wait
+        self.jitter = jitter
+
+    async def recover(self, entity, stream, error, attempt, recovery_fun):
+        if attempt > self._max_retries:
+            self.log.info("Reconnecting failed, giving up")
+            stop_everything(asyncio.get_event_loop(), "unsucessful reconnect")
+            return
+        self.log.debug("Trying to reconnect to stream: %s. Attempt:%s, reason: %s",
+                       stream, attempt, error.__class__.__name__)
+        # calculate the backoff time
+        backoff_time = min(self.max_wait, 2 ** (attempt - 1))
+
+        # add safe jitter with some randomization
+        delay = random.uniform(1, self.jitter)  # noqa: S311
+        backoff_time = backoff_time + delay
+        self.log.info("Reconnection attempt %d in %.1fs.", attempt, backoff_time)
+        await asyncio.sleep(backoff_time)
+        try:
+            # check if the stream still exists
+            stream_exist = await entity.stream_exists(stream)
+            if stream_exist:
+                self.log.debug("Attempting to reconnect to stream %s, attempt %d",
+                               stream, attempt)
+                await entity.clean_list(stream)
+                await recovery_fun()
+                self.log.info("Reconnected to %s successfully on attempt %d.",
+                              stream, attempt)
+                return
+            self.log.info("Stream: %s does not exist. Giving up. Attempt:%d, reason:%s",
+                          stream, attempt, error.__class__.__name__)
+            stop_everything(asyncio.get_event_loop(), "missing stream")
+        except Exception as e:
+            self.log.error("Error reconnecting to %s (attempt %d): %r",  # noqa: TRY400
+                           stream, attempt, e)
+            # retry again
+            await self.recover(entity, stream, e, attempt + 1, recovery_fun)
 
 
 class Backend:
@@ -59,7 +111,7 @@ class RabbitConsumer:
         except rstream.OffsetNotFound:
             return 0
         except rstream.StreamDoesNotExist as e:
-            raise ValueError("invalid stream name") from e
+            raise ValueError(f"stream {self.cfg.stream} not found or invalid") from e
 
     async def on_connection_closed(self, disconnection_info: rstream.OnClosedErrorInfo) -> None:
         self.log.warning(
@@ -67,26 +119,6 @@ class RabbitConsumer:
             disconnection_info.streams,
             disconnection_info.reason,
         )
-        await asyncio.sleep(2)
-        for stream in disconnection_info.streams:
-            backoff = 2
-            count = 0
-            while True:
-                try:
-                    self.log.debug("trying to reconnect to stream: %s", stream)
-                    if self.consumer is not None:
-                        await self.consumer.reconnect_stream(stream)
-                    break
-                except Exception as ex:
-                    if count > 10:
-                        # TODO: or try infinitely often?
-                        self.log.exception("reconnection failed, giving up.")
-                        sys.exit(-1)
-                    backoff = min(backoff * 2, 60)
-                    count += 1
-                    self.log.warning(
-                        "Reconnecting failed: %r (retrying in %ds)", ex, backoff)
-                    await asyncio.sleep(backoff)
 
     async def run(self):
         # for msg in testmsg():
@@ -103,6 +135,7 @@ class RabbitConsumer:
                 username=r.user,
                 password=r.pw,
                 on_close_handler=self.on_connection_closed,
+                recovery_strategy=BackoffStrategy(self.log),
                 load_balancer_mode=True,  # TODO: does not work without, what it do?
             )
 
@@ -116,13 +149,19 @@ class RabbitConsumer:
             try:
                 await self.consumer.start()
                 await self.dlx_producer.start()
-            except Exception:
+            except OSError:
                 self.log.exception("Connecting to RabbitMQ failed")
+                return
             try:
                 await self.backend.setup()
             except Exception:
                 self.log.exception("Error in setup of backend")
-            offset = await self.get_offset()
+                return
+            try:
+                offset = await self.get_offset()
+            except OSError:
+                self.log.exception("unable to get stream offset")
+                return
             self.log.info(
                 "consumer started, subscribing to %s as %s", r.stream, SUBNAME)
             await self.consumer.subscribe(
@@ -136,6 +175,8 @@ class RabbitConsumer:
                 ),
             )
             await self.consumer.run()
+        except Exception:
+            self.log.exception("Error during startup")
         finally:
             self.log.info("shutting down")
             if self.consumer:

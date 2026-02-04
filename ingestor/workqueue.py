@@ -58,4 +58,5 @@ class RmqClient:
             )
 
     async def close(self):
-        await self.connection.close()
+        if self.connection is not None:
+            await self.connection.close()

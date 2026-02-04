@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import os
 import signal
 import sys
@@ -12,6 +13,7 @@ from .consumer import RabbitConsumer
 
 # TODO: configurable to reuse the rabbitmq logic part?
 from .ingestor import Ingestor
+from .util import error_fallback, stop_everything
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -87,27 +89,14 @@ def get_config():
     return Config(rmq, sc, sfh)
 
 
-def error_fallback(_loop, context):
-    """Fallback exception handler."""
-    msg = "Uncaught exception in Task"
-    if (f := context.get("future")) is not None:
-        funcname = f.get_coro().__qualname__
-        msg += f' "{f.get_name()}" running function {funcname}()'
-    mlzlog.log.error(msg, exc_info=context.get("exception"))
-    sys.exit(1)
-
-
 async def _main():
     cfg = get_config()
 
     loop = asyncio.get_event_loop()
 
-    def stop_everything(sig):
-        mlzlog.log.info("stopping due to %s", sig)
-        for task in asyncio.all_tasks(loop):
-            task.cancel()
-    loop.add_signal_handler(signal.SIGINT, stop_everything, "SIGINT")
-    loop.add_signal_handler(signal.SIGTERM, stop_everything, "SIGTERM")
+    handler = functools.partial(stop_everything, loop)
+    loop.add_signal_handler(signal.SIGINT, handler, "SIGINT")
+    loop.add_signal_handler(signal.SIGTERM, handler, "SIGTERM")
     loop.set_exception_handler(error_fallback)
 
     ingestor = Ingestor(cfg, mlzlog.getLogger("ingestor"))
