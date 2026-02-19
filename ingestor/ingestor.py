@@ -66,6 +66,8 @@ class Ingestor(Backend):
                 unit = self._map_unit(parammd.get("unit", ""))
                 cat_name = f"{dev}_{param}" if param != "value" else dev
                 if isinstance(val, list):
+                    if not val:  # skip empty lists
+                        continue
                     if len(val) > 1 and isinstance(val[1], str) and "," in val[1]:
                         smd[cat_name] = {"value": f"{val[0]} {val[1]}", "unit": unit}
                     elif isinstance(val[0], (int, float)):
