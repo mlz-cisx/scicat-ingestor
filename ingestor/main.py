@@ -92,14 +92,15 @@ def get_config():
 
 
 async def _main():
+    exit_code = [0]
     cfg = get_config()
 
     loop = asyncio.get_event_loop()
 
-    handler = functools.partial(stop_everything, loop)
+    handler = functools.partial(stop_everything, loop, exit_code, code=130)
     loop.add_signal_handler(signal.SIGINT, handler, "SIGINT")
     loop.add_signal_handler(signal.SIGTERM, handler, "SIGTERM")
-    loop.set_exception_handler(error_fallback)
+    loop.set_exception_handler(functools.partial(error_fallback, exit_code=exit_code))
 
     ingestor = Ingestor(cfg, mlzlog.getLogger("ingestor"))
     consumer = RabbitConsumer(cfg.rmq, ingestor, mlzlog.getLogger("consumer"))
@@ -107,9 +108,11 @@ async def _main():
         await consumer.run()
     except asyncio.CancelledError:
         mlzlog.log.info("stopped")
+    return exit_code[0]
 
 
 def main():
     mlzlog.initLogging("ingest", rootlevel="info",
                        logdir=None)  # only to console
-    asyncio.run(_main())
+    exit_code = asyncio.run(_main())
+    sys.exit(exit_code)

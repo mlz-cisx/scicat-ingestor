@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import rstream
 from rstream.recovery import RecoveryStrategy
 
-from .util import stop_everything
+from .util import ReconnectionError, stop_everything
 
 
 class BackoffStrategy(RecoveryStrategy):
@@ -24,8 +24,7 @@ class BackoffStrategy(RecoveryStrategy):
     async def recover(self, entity, stream, error, attempt, recovery_fun):
         if attempt > self._max_retries:
             self.log.info("Reconnecting failed, giving up")
-            stop_everything(asyncio.get_event_loop(), "unsucessful reconnect")
-            return
+            raise ReconnectionError("unsucessful reconnect")
         self.log.debug("Trying to reconnect to stream: %s. Attempt:%s, reason: %s",
                        stream, attempt, error.__class__.__name__)
         # calculate the backoff time
