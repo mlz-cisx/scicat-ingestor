@@ -194,7 +194,7 @@ class RabbitConsumer:
                 "Producer not initialized, cannot publish to dead letter stream")
         try:
             message = rstream.AMQPMessage(
-                body=msg_raw,
+                body=msg_raw.body,
                 application_properties={
                     "x-error": str(error),
                     "x-failed-at": datetime.now(tz=UTC).isoformat(),
