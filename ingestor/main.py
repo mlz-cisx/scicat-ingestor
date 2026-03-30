@@ -28,8 +28,8 @@ class RabbitMQConfig:
     stream: str
     user: str
     pw: str
+    dlx_stream: str
     workqueue: str | None = None
-    dlx_stream: str | None = None
 
 
 @dataclass
@@ -74,18 +74,20 @@ def get_config():
     rmq_vhost = os.environ.get("RMQ_VHOST", "/")
     rmq_stream = os.environ.get("RMQ_STREAM")
     if not rmq_stream:
-        raise ValueError("No RabbitMQ Stream configured for listenning!")
+        raise ValueError("No RabbitMQ Stream configured for listenning")
     rmq_user = os.environ.get("RMQ_USER")
     if not rmq_user:
-        raise ValueError("No RabbitMQ user configured!")
+        raise ValueError("No RabbitMQ user configured")
     rmq_pw = os.environ.get("RMQ_PASSWORD")
     if not rmq_pw:
-        raise ValueError("No RabbitMQ password configured!")
+        raise ValueError("No RabbitMQ password configured")
+    rmq_dlx_stream = os.environ.get("RMQ_DLX_STREAM")
+    if not rmq_dlx_stream:
+        raise ValueError("No dead-letter exchange stream configured")
     rmq_workqueue = os.environ.get("RMQ_WORKQUEUE")
     rmq_queue_port = int(os.environ.get("RMQ_QUEUE_PORT", "5672"))
-    rmq_dlx_stream = os.environ.get("RMQ_DLX_STREAM")
     rmq = RabbitMQConfig(rmq_host, rmq_port, rmq_queue_port, rmq_vhost, rmq_stream, rmq_user,
-                         rmq_pw, rmq_workqueue, rmq_dlx_stream)
+                         rmq_pw, rmq_dlx_stream, rmq_workqueue)
     return Config(rmq, sc, sfh)
 
 
