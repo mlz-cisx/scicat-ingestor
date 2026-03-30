@@ -1,0 +1,37 @@
+All messages are json. The message format may change a bit, but currently it looks like this:
+
+{
+    "version": "v1alpha1",
+    "id": "ad63d687-73b3-4552-bd31-4846026a8ed6",
+    "blockid": "None",
+    "scanid": "None",
+    "name": "Example scan",
+    "event": "scan",
+    "creation_timestamp": "2026-02-24T20:59:47.600254+00:00",
+    "dataroot": "/nicos/data",
+    "proposalpath": "/nicos/data/2026/P00019-01",
+    "samplepath": "/nicos/data/2026/P00019-01",
+    "fileinfos": [{"name": "P00019-01_00000004.dat", "path": "/nicos/data/2026/P00019-01/data/P00019-01_00000004.dat", "stat": {"size": 12992, "atime": "2026-02-24T20:59:47.607057+00:00", "mtime": "2026-02-24T20:59:50.869116+00:00", "ctime": "2026-02-24T20:59:50.869116+00:00", "mode": 33204, "uid": 20648, "gid": 65534, "inode": 16106931794}}],
+    "mapping": {"experiment": "Exp", "sample": "Sample", "instrument": "panda", "environment": ["mono", "ana", "sth", "stt"]},
+    "propinfo": {"users": [{"name": "<User of the experiment>", "email": "<user email>"}], "localcontacts": [{"name": "<Localcontact name>", "email": "<Localcontact email>"}], "proposal": "P00019-01", "cycle": "unknown_cycle"},
+    "metadata": { "afh": {"value": {"value": 0.0, "unit": "deg", "category": "general"},"status": {"value": [200, "idle"], "unit": "", "category": "status"}, "userlimits": {"value": [-179.0, 179.0], "unit": "deg", "category": "limits"}, "offset": {"value": 0.0, "unit": "deg", "category": "offsets"}, "precision": {"value": 1.0, "unit": "deg", "category": "precisions"}, "alias": {"value": "afh_pg", "unit": "", "category": "instrument"}}, ... },
+    "statistics": { "afh": {"mean": 0.0, "stddev": Infinity, "min": 0.0, "max": 0.0} },
+    "counterinfo": {"proposal_counter": 2, "sample_counter": 2, "counter": 4, "number": 0},
+    "canonicalvalues": {"panda": [0.9799999999999993, -2.220446049250313e-16, 0.0, 0.0]}
+}
+
+The full metadata/statistics fields are too large for this example, see fullmessage.json to see a complete example message.
+
+Each message has an event type. The previous ones was 'scan'. This marks the begin of a new scan in NICOS. The ingestor as it is currently implemented creates one dataset per scan.
+
+Afterwards, there is a message for each measurement point (shortened):
+
+'{"version": "v1alpha1", "id": "d755cb44-a6b6-4ef5-b313-a4aa8dd64ccb", "blockid": "None", "scanid": "ad63d687-73b3-4552-bd31-4846026a8ed6", "name": "", "event": "point", "creation_timestamp": "2026-02-24T20:59:51.515496+00:00", "dataroot": "/nicos/data", "proposalpath": "/nicos/data/2026/P00019-01", "samplepath": "/nicos/data/2026/P00019-01", "fileinfos": [], "mapping": {"experiment": "Exp", "sample": "Sample", "instrument": "panda", "environment": ["mono", "ana", "sth", "stt"]}, "propinfo": {"users": [{"name": "<User of the experiment>", "email": "<user email>"}], "localcontacts": [{"name": "<Localcontact name>", "email": "<Localcontact email>"}], "proposal": "P00019-01", "cycle": "unknown_cycle"}, "metadata": { ... }, statistics: { ... }, "counterinfo": {"proposal_counter": 0, "sample_counter": 0, "counter": 0, "number": 2}, "canonicalvalues": {"panda": [0.9819999999999998, 4.440892098500626e-16, 0.0, 0.0]}}'
+
+b'{"version": "v1alpha1", "id": "88c2403b-003d-47e7-bc4d-ee4206c36004", "blockid": "None", "scanid": "ad63d687-73b3-4552-bd31-4846026a8ed6", "name": "", "event": "point", "creation_timestamp": "2026-02-24T21:00:37.686937+00:00", "dataroot": "/nicos/data", "proposalpath": "/nicos/data/2026/P00019-01", "samplepath": "/nicos/data/2026/P00019-01", "fileinfos": [], "mapping": {"experiment": "Exp", "sample": "Sample", "instrument": "panda", "environment": ["mono", "ana", "sth", "stt"]}, "propinfo": {"users": [{"name": "<User of the experiment>", "email": "<user email>"}], "localcontacts": [{"name": "<Localcontact name>", "email": "<Localcontact email>"}], "proposal": "P00019-01", "cycle": "unknown_cycle"}, "metadata": { ... }, "statistics": { ... }, "counterinfo": {"proposal_counter": 0, "sample_counter": 0, "counter": 0, "number": 14}, "canonicalvalues": {"panda": [1.0060000000000002, -6.661338147750939e-16, 0.0, 0.0]}}'
+
+For each scan, there is a 'scan.end' event to conclude the scan:
+
+b'{"version": "v1alpha1", "id": "ad63d687-73b3-4552-bd31-4846026a8ed6", "blockid": "None", "scanid": "None", "name": "Example scan", "event": "scan.end", "creation_timestamp": "2026-02-24T20:59:47.600254+00:00", "dataroot": "/nicos/data", "proposalpath": "/nicos/data/2026/P00019-01", "samplepath": "/nicos/data/2026/P00019-01", "fileinfos": [{"name": "P00019-01_00000004.dat", "path": "/nicos/data/2026/P00019-01/data/P00019-01_00000004.dat", "stat": {"size": 14635, "atime": "2026-02-24T20:59:47.607057+00:00", "mtime": "2026-02-24T21:01:07.453544+00:00", "ctime": "2026-02-24T21:01:07.453544+00:00", "mode": 33204, "uid": 20648, "gid": 65534, "inode": 16106931794}}], "mapping": {"experiment": "Exp", "sample": "Sample", "instrument": "panda", "environment": ["mono", "ana", "sth", "stt"]}, "propinfo": {"users": [{"name": "<User of the experiment>", "email": "<user email>"}], "localcontacts": [{"name": "<Localcontact name>", "email": "<Localcontact email>"}], "proposal": "P00019-01", "cycle": "unknown_cycle"}, "metadata": { ... }, "statistics": { ... }, "counterinfo": {"proposal_counter": 2, "sample_counter": 2, "counter": 4, "number": 0}, "canonicalvalues": {"panda": [1.0200000000000005, -2.220446049250313e-16, 0.0, 0.0]}}'
+
+In this small example, a single data file was written. Naturally, files written for each scan point can be found in "fileinfos" in each point message.

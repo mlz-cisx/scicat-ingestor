@@ -12,9 +12,13 @@ dynamic = ["version"]
 authors = [
     { name = "Bjoern Pedersen", email = "bjoern.pedersen@frm2.tum.de" },
     { name = "Alexander Zaft", email = "a.zaft@fz-juelich.de" },
+    { name = "Christian Felder", email = "c.felder@fz-juelich.de" },
+    { name = "Mohamed Ouaki", email = "mohamed.ouaki@frm2.tum.de" },
+    { name = "Florian Koch", email = "florian.koch@frm2.tum.de" },
+    { name = "Moritz Hannemann", email = "m.hannemann@fz-juelich.de" },
 ]
-license = {text = ""}  # TODO!
-description = "scicat ingestor service"
+license = {text = "GPL-2.0-or-later"}
+description = "MLZ SciCat Ingestor"
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
