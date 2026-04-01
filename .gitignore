@@ -1,4 +1,4 @@
-src/version.py
+ingestor/version.py
 __pycache__/
 *.egg-info
 .env*
