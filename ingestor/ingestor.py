@@ -1,5 +1,5 @@
+import asyncio
 import math
-import time
 
 import mlzlog
 
@@ -160,7 +160,7 @@ class Ingestor(Backend):
                 await self.client.update_datablock(datablock_from_scicat._id, update,  # noqa: SLF001
                                                    since=datablock_from_scicat.updatedAt)
             except PrecondFailed:
-                time.sleep(0.05)
+                await asyncio.sleep(0.05)
                 continue
             break
         if new:
