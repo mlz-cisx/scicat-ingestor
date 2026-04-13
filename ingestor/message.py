@@ -175,6 +175,7 @@ class Message:
         self.statistics = {
             k: Stats(**v) for k, v in content["statistics"].items()
         }
+        self.metamapping = content.get("metamapping")
         self.counterinfo = Counters(**content["counterinfo"])
         self.canonicalvalues = content["canonicalvalues"]
 
@@ -183,6 +184,7 @@ class Message:
             id=self._get_mapped(content, "sample", "value"),
         )
         self.instrument = self._get_mapped(content, "instrument", "instrument")
+        self.environment = content["mapping"]["environment"]
 
     def _get_mapped(self, msg, mapping, key):
         mapped = msg["metadata"].get(msg["mapping"].get(mapping))
@@ -253,7 +255,7 @@ class Message:
 
 
 MESSAGES = {
-    "v1alpha1": Message,
+    "v1alpha2": Message,
 }
 
 

@@ -54,6 +54,8 @@ export SCICAT_AUTH_STRATEGY=<"ldap" or "login">
 ingestor
 ```
 
+Setting `ENABLE_MD_FALLBACK` to `[Tt]rue` makes the ingestor dump all devices' metadata and statistics into SciCat independent of the `metamapping` in the message sent.
+
 You can provide these settings as environment variables, or in an `.env` file.
 
 There also is a Dockerfile for building a suitable image. You have to provide these settings when starting the container as well.

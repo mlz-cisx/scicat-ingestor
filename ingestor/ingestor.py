@@ -1,5 +1,6 @@
 import asyncio
 import math
+from copy import deepcopy
 
 import mlzlog
 
@@ -9,12 +10,21 @@ from .message import Event, Message, parse_message
 from .workqueue import RmqClient
 
 
+class IngestorError(Exception):
+    """Base exception for all errors in the ingestor."""
+
+
+class InvalidMessage(IngestorError):
+    """Invalid message, e.g. no metamapping defined when `ENABLE_MD_FALLBACK` is False"""
+
+
 class Ingestor(Backend):
     def __init__(self, cfg, log):
         self.log = log
         self.client = SciCatClient(cfg.sc, mlzlog.getLogger("client"))
         self.workqueue = RmqClient(cfg.rmq, mlzlog.getLogger("workqueue"))
         self.source_folder_host = cfg.source_folder_host
+        self.enable_fallback = cfg.enable_md_fallback
 
     async def setup(self):
         await self.workqueue.setup()
@@ -40,8 +50,94 @@ class Ingestor(Backend):
         await self._queue_filecopies(msg)
         self.log.info("done with message %s", msg.id)
 
+    def _complete_mapping(self, msg):
+        """Add environment devices to mapping. Don't override configured keys."""
+        completed = deepcopy(msg.metamapping)
+        devs = completed.get("devs", {})
+        mapped_devices = set(devs.values())
+        for dev in msg.environment:
+            if dev in mapped_devices:
+                continue
+            devs[dev] = dev
+        return completed
+
+    def _add_entry(self, cat_name, metadata, smd):
+        """Add an entry for the scientificMetadata, only call from get_scientific_metadata."""
+        val = metadata.get("value")
+        if val is None:
+            return
+        unit = self._map_unit(metadata.get("unit", ""))
+        if isinstance(val, list):
+            if not val:  # skip empty lists
+                return
+            if len(val) > 1 and isinstance(val[1], str) and "," in val[1]:
+                smd[cat_name] = {"value": f"{val[0]} {val[1]}", "unit": unit}
+            elif isinstance(val[0], (int, float)):
+                smd[cat_name] = {"value": val[0], "unit": unit}
+            else:
+                # handle mixed type devices that return a str for some settings
+                smd[cat_name] = {"value": str(val[0]), "unit":  ""}
+        elif isinstance(val, str):
+            smd[cat_name] = {"value": val, "unit": ""}
+        else:
+            smd[cat_name] = {"value": val, "unit": unit}
+
     def get_scientific_metadata(self, msg):
         smd = {}
+        smd["runNumber"] = {"value": msg.counterinfo.counter, "unit": ""}
+
+        # Fallback: add all devices and statistics to scientific metadata `smd`
+        #           before applying the mapping.
+        if self.enable_fallback:
+            smd = self._mapping_fallback(msg, smd)
+        elif msg.metamapping is None or not msg.metamapping:
+            raise InvalidMessage("No metamapping in message and no fallback configured, see ENABLE_MD_FALLBACK.")
+
+        metamapping = self._complete_mapping(msg)
+        smd.update(metamapping.get("constants", {}))
+
+        for cat_name, devparam in metamapping.get("devs", {}).items():
+            if "." in devparam:
+                dev, param = devparam.split(".", 1)
+            else:
+                dev, param = devparam, "value"
+            if dev in msg.statistics and param == "value":
+                stats = msg.statistics[dev]
+                unit = msg.metadata.get(dev, {}).get("value", {}).get("unit", "")
+                unit = self._map_unit(unit)
+                for key, value in stats._asdict().items():
+                    if key == "stddev" and (stats.stddev == 0.0 or math.isinf(stats.stddev)):
+                        v = 0.0
+                    else:
+                        v = value
+                    smd[f"{cat_name}_{key}"] = {
+                        "value": v,
+                        "unit": unit,
+                    }
+            elif dev in msg.metadata:
+                metadata = msg.metadata[dev].get(param)
+                self._add_entry(cat_name, metadata, smd)
+            else:
+                self.log.warning(
+                    "Device %s not in statistics or metadata sections, skipping",
+                    devparam,
+                )
+                continue
+        return smd
+
+    def _mapping_fallback(self, msg, smd):
+        """Fallback for metadata if there is no mapping defined.
+
+        Add all devices and parameters as is to the scientific metadata `smd`.
+        """
+        for dev, dev_params in msg.metadata.items():
+            if dev in msg.statistics:
+                continue
+            for param, parammd in dev_params.items():
+                if not parammd:
+                    continue
+                cat_name = f"{dev}_{param}" if param != "value" else dev
+                self._add_entry(cat_name, parammd, smd)
         for dev, stats in msg.statistics.items():
             unit = msg.metadata.get(dev, {}).get("value", {}).get("unit", "")
             unit = self._map_unit(unit)
@@ -54,32 +150,6 @@ class Ingestor(Backend):
                     "value": v,
                     "unit": unit,
                 }
-        for dev, dev_params in msg.metadata.items():
-            if dev in msg.statistics:
-                continue
-            for param, parammd in dev_params.items():
-                if not parammd:
-                    continue
-                val = parammd.get("value")
-                if val is None:
-                    continue
-                unit = self._map_unit(parammd.get("unit", ""))
-                cat_name = f"{dev}_{param}" if param != "value" else dev
-                if isinstance(val, list):
-                    if not val:  # skip empty lists
-                        continue
-                    if len(val) > 1 and isinstance(val[1], str) and "," in val[1]:
-                        smd[cat_name] = {"value": f"{val[0]} {val[1]}", "unit": unit}
-                    elif isinstance(val[0], (int, float)):
-                        smd[cat_name] = {"value": val[0], "unit": unit}
-                    else:
-                        # handle mixed type devices that return a str for some settings
-                        smd[cat_name] = {"value": str(val[0]), "unit":  ""}
-                elif isinstance(val, str):
-                    smd[cat_name] = {"value": val, "unit": ""}
-                else:
-                    smd[cat_name] = {"value": val, "unit": unit}
-        smd["runNumber"] = {"value": msg.counterinfo.counter, "unit": ""}
         return smd
 
     def _map_unit(self, unit):
