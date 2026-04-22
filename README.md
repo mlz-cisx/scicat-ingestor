@@ -68,5 +68,6 @@ the owner group of the created dataset must be a group the user is a member of.
  - The user is a member of an admin group.
 
 [1] https://nicos-controls.org
+
 [2] venv creation can be done using pyenv with pyenv-virtualenv plugin.
  https://github.com/pyenv/pyenv-virtualenv
