@@ -1,0 +1,26 @@
+schemaVersion: 2.2.0
+metadata:
+  name: nicos-tinl
+components:
+  - name: container-1
+    container:
+      image: 'quay.io/devfile/universal-developer-image:latest'
+      mountSources: true
+      memoryRequest: 500Mi
+      memoryLimit: 1G
+      cpuRequest: 1000m
+      cpuLimit: 4000m
+
+commands:
+- id: run
+  exec:
+    label: "Run the application"
+    component: container-1
+    workingDir: ${PROJECTS_ROOT}/ingestor
+    commandLine: |
+      set -x
+      python -m venv .venv
+      .venv/bin/pip install -e .
+      .venv/bin/python -m ingestor
+    group:
+      kind: run
