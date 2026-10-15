@@ -138,7 +138,8 @@ class Message:
         self.id = content["id"]
         self.blockid = content["blockid"] if content["blockid"] != "None" else None
         self.scanid = content["scanid"] if content["scanid"] != "None" else None
-        self.name = content["name"] or ""
+        self.info = content["info"]
+        self.userinfo = content["userinfo"]
         self.event = Event(content["event"])
         self.dataroot = Path(content["dataroot"])
         self.proposalpath = Path(content["proposalpath"])
@@ -209,7 +210,7 @@ class Message:
             contactEmail="datasteward@mlz-garching.de",  # TODO
             creationLocation="MLZ",  # TODO: instrument?
             principalInvestigator=self.propinfo.mainproposer.name,
-            datasetName=self.name or "Scan",
+            datasetName=self.userinfo or f"Scan {self.counterinfo.counter:d} - {self.info}",
             creationTime=datetime.now(tz=UTC).isoformat(),
             pid=self.dataset_pid,
             isPublished=False,
