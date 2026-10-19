@@ -474,6 +474,7 @@ class UpdateOrigDataBlockDto:
 
 @dataclass
 class CreateSampleDto:
+    sampleName: str
     ownerGroup: str
     accessGroups: list[str] | None = None
     instrumentGroup: str | None = None

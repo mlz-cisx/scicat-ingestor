@@ -232,6 +232,7 @@ class Message:
 
     def get_sample_dto(self):
         return CreateSampleDto(
+            sampleName=str(self.sample.name),
             sampleId=str(self.sample.id),
             owner="ingestor",
             ownerGroup="ingestor",
