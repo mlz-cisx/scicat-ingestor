@@ -88,6 +88,7 @@ class File:
 class Sample:
     name: str
     id: str
+    description: str
 
 
 @dataclass(frozen=True)
@@ -183,7 +184,10 @@ class Message:
         self.sample = Sample(
             name=self._get_mapped(content, "sample", "samplename"),
             id=self._get_mapped(content, "sample", "value"),
+            description=self._get_mapped(content, "sample", "sampledescription"),
         )
+        if not self.sample.name or not self.sample.id:
+            raise ValueError("Empty Sample id or name")
         self.instrument = self._get_mapped(content, "instrument", "instrument")
         self.environment = content["mapping"]["environment"]
 
