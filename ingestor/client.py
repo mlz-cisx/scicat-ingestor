@@ -97,6 +97,8 @@ class SciCatClient:
                                         params={"filter": json.dumps(filter)})
 
     async def login(self, user, password):
+        # scicat checks for the old auth header
+        self.session.headers.popall("Authorization", "")
         login_info = await self._post_endpoint(
             f"/api/v3/auth/{self.config.auth_strat}",
             AuthResponse,
