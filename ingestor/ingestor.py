@@ -4,7 +4,8 @@ from copy import deepcopy
 
 import mlzlog
 
-from .client import PrecondFailed, SciCatClient, UpdateOrigDataBlockDto
+from .client import PartialUpdateSampleDto, PrecondFailed, SciCatClient, \
+    UpdateDatasetDto, UpdateOrigDataBlockDto
 from .consumer import Backend
 from .message import Event, Message, parse_message
 from .workqueue import RmqClient
@@ -46,7 +47,7 @@ class Ingestor(Backend):
         dataset.scientificMetadata = self.get_scientific_metadata(msg)
         dataset.sourceFolderHost = self.source_folder_host
         await self._upload(dataset, msg.get_datablock_dto(), msg.get_proposal_dto(),
-                           msg.get_datafiles(), msg.get_sample_dto())
+                           msg.get_datafiles(), msg.get_sample_dto(), event=msg.event)
         await self._queue_filecopies(msg)
         self.log.info("done with message %s", msg.id)
 
@@ -155,15 +156,21 @@ class Ingestor(Backend):
     def _map_unit(self, unit):
         return unit.replace("A-1", "angstrom^-1")  # .replace("K", "kelvin")
 
-    async def _upload(self, dataset, datablock, proposal, files, sample):
+    async def _upload(self, dataset, datablock, proposal, files, sample, event):
         # create proposal if not present
         prop_from_scicat = await self._get_or_create_proposal(proposal)
         dataset.proposalId = str(prop_from_scicat.proposalId)
         # ensure sample exists
-        if await self.client.get_sample_by_id(sample.sampleId, not_found_ok=True) is None:
+        if (
+            existing_sample := await self.client.get_sample_by_id(
+                sample.sampleId, not_found_ok=True,
+            )
+        ) is None:
             self.log.info("Creating sample %s in SciCat", sample.sampleId)
             await self.client.create_sample(sample)
-        else:
+        elif event == Event.SCAN:
+            # only update sample on the first scan point
+            await self._update_sample(existing_sample, sample)
             self.log.info("Sample %s found", sample.sampleId)
         instrument = await self.client.instrument_by_unique_name(f"MLZ.{dataset.instrumentId}")
         if instrument:
@@ -173,13 +180,51 @@ class Ingestor(Backend):
                              dataset.instrumentId)
 
         # create dataset if not present
-        if await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True) is None:
+        if (
+            existing_ds := await self.client.get_dataset_by_pid(dataset.pid, not_found_ok=True)
+        ) is None:
             self.log.info("Creating Dataset %s in SciCat", dataset.pid)
             await self.client.create_dataset(dataset)
             await self._create_datablock(dataset, datablock)
         else:
             # modify existing
+            if event in (Event.ENDSCAN, Event.ENDSUBSCAN):
+                # only update at the end right now, maybe we move to updates
+                # every point later
+                await self._update_dataset(existing_ds, dataset)
             await self._add_files_to_dataset(dataset, datablock, files)
+
+    async def _update_dataset(self, existing, new):
+        while True:
+            update = UpdateDatasetDto(
+                scientificMetadata=new.scientificMetadata,
+            )
+            try:
+                await self.client.update_dataset(existing.pid, update, since=existing.updatedAt)
+            except PrecondFailed:
+                existing = self.client.get_dataset_by_pid(existing.pid)
+                continue
+            break
+
+    async def _update_sample(self, existing, new):
+        old_groups = set(existing.accessGroups)
+        access_groups = existing.accessGroups[:]
+        for group in new.accessGroups:
+            if group not in old_groups:
+                access_groups.append(group)
+        if set(access_groups) == old_groups:
+            return
+        while True:
+            update = PartialUpdateSampleDto(
+                accessGroups=access_groups,
+                # sampleCharacteristics=,
+            )
+            try:
+                await self.client.update_sample(existing.sampleId, update, since=existing.updatedAt)
+            except PrecondFailed:
+                existing = self.client.get_sample_by_id(existing.id)
+                continue
+            break
 
     async def _get_or_create_proposal(self, proposal):
         present = await self.client.get_proposal_by_pid(proposal.proposalId, not_found_ok=True)

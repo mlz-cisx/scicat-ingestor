@@ -228,6 +228,15 @@ class SciCatClient:
             not_found_ok=not_found_ok,
         )
 
+    @ensure_logged_in
+    async def update_sample(self, sampleId, sample_update, since=None):
+        return await self._patch_endpoint(
+            f"/api/v3/samples/{sampleId}",
+            Sample,
+            sample_update,
+            since=since,
+        )
+
     async def close(self):
         await self.session.close()
 
@@ -486,6 +495,21 @@ class CreateSampleDto:
     sampleId: str | None = None
     owner: str | None = None
     description: str | None = None
+    sampleCharacteristics: dict[str, object] | None = None
+    isPublished: bool = False
+
+
+@dataclass
+class PartialUpdateSampleDto:
+    ownerGroup:	str | None = None
+    accessGroups: list[str] | None = None
+    instrumentGroup: str | None = None
+    owner: str | None = None
+    sampleName: str | None = None
+    description: str | None = None
+    type: str | None = None
+    proposalId: str | None = None
+    parentSampleId: str | None = None
     sampleCharacteristics: dict[str, object] | None = None
     isPublished: bool = False
 

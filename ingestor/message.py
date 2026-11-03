@@ -240,8 +240,7 @@ class Message:
             sampleId=str(self.sample.id),
             owner="ingestor",
             ownerGroup="ingestor",
-            accessGroups=[],
-            instrumentGroup="",
+            accessGroups=[self.propinfo.session, self.propinfo.instrument],
             description=self.sample.name,
         )
 
