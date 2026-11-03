@@ -58,6 +58,7 @@ class SciCatClient:
                 if not_found_ok and response.status == 404:
                     return None
                 self.log.error("Error in get request to %s: %r", endpoint, await response.text())
+                response.raise_for_status()
         return None
 
     async def _post_endpoint(self, endpoint, response_type, request_data, *args, **kwargs):
@@ -70,6 +71,7 @@ class SciCatClient:
                 return from_response(response_type, await response.json())
             if response.status >= 400:
                 self.log.error("Error in post request to %s: %r", endpoint, await response.text())
+                response.raise_for_status()
         return None
 
     async def _patch_endpoint(self, endpoint, response_type, request_data,
@@ -86,10 +88,11 @@ class SciCatClient:
         ) as response:
             if 200 <= response.status < 300:
                 return from_response(response_type, await response.json())
-            if response.status >= 400:
-                self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
             if response.status == 412:
                 raise PrecondFailed
+            if response.status >= 400:
+                self.log.error("Error in patch request to %s: %r", endpoint, await response.text())
+                response.raise_for_status()
         return None
 
     async def _search(self, endpoint, response_type, filter=None):  # noqa: A002
