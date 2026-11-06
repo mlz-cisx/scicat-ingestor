@@ -220,7 +220,7 @@ class Message:
             isPublished=False,
             description="not available",
             # scientificMetadata=self.get_scientific_metadata(),
-            runNumber=str(0),
+            runNumber=str(self.counterinfo.counter),
             sampleId=str(self.sample.id),
             instrumentId=self.instrument,
         )
